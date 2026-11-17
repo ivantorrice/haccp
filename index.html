@@ -120,7 +120,7 @@ async function cloudStart(){
     cloud = {m: fs, col: fs.collection(db, "kitchens", code, "data"), dev};
     let first = true;
     setTimeout(() => { if (first && window.cloudState && !window.cloudState.ok) setCS("Non riesco a raggiungere il database Firestore. Controlla di avere rete e che in Firebase il database sia creato con nome (default). Se è così, riprova tra un minuto.", false); }, 15000);
-    fs.onSnapshot(cloud.col, snap => {
+    fs.onSnapshot(cloud.col, {includeMetadataChanges: true}, snap => {
       const m = tsMap(); let changed = false;
       const remote = {}; snap.docs.forEach(d => { remote[d.id] = d.data(); });
       if (snap.metadata.fromCache && first){ setCS("Senza rete: i dati restano sul telefono e si sincronizzano dopo", false); return; }
@@ -538,7 +538,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <label class="f">Codice della cucina (almeno 8 caratteri, non darlo a estranei)<input id="cdCode" type="text" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
 <button type="button" class="p" id="cdGo" style="width:100%">Collega al cloud</button>
 <p id="cdSt" role="status" class="meta"></p>
-<p class="meta" style="margin-top:0">Versione app: 17/11 ore 16:50 (con diagnosi)</p>
+<p class="meta" style="margin-top:0">Versione app: 17/11 ore 17:05 (sincronizzazione corretta)</p>
 <button type="button" id="cdDg" style="width:100%;margin-bottom:6px">Diagnosi del collegamento</button>
 <pre id="cdDgOut" class="meta" style="white-space:pre-wrap;word-break:break-word;margin:0 0 8px" hidden></pre>
 <button type="button" id="cdNot" style="width:100%;margin-bottom:6px" hidden>Attiva le notifiche delle 18</button>
@@ -1291,7 +1291,6 @@ renderCal();
       try { const c = new AbortController(), t = setTimeout(() => c.abort(), 12000); const r = await fetch(url, Object.assign({signal: c.signal}, opt || {})); clearTimeout(t); let j = {}; try { j = await r.json(); } catch(e){} const e = j.error || {}; L.push(nome + ": " + r.status + (e.status ? " " + e.status : "") + (e.message ? " – " + String(e.message).slice(0, 110) : "")); }
       catch(e){ L.push(nome + ": nessuna risposta (" + (e.name === "AbortError" ? "tempo scaduto" : e.message) + ")"); }
     };
-    await run("Rete Google", "https://www.gstatic.com/generate_204");
     await run("Accesso anonimo", "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + K, {method: "POST", headers: {"Content-Type": "application/json"}, body: "{}"});
     await run("Database Firestore", "https://firestore.googleapis.com/v1/projects/" + P + "/databases/(default)/documents/public/carta?key=" + K);
     L.push("Stato app: " + ((window.cloudState && window.cloudState.text) || "-"));
