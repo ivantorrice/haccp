@@ -136,8 +136,25 @@ async function cloudStart(){
     }, e => setCS(cloudErr(e), false));
   } catch(e){ cloud = null; setCS(cloudErr(e), false); }
 }
+const VAPID_KEY = "BOYBH9c20NBqqH0LGKmKw5yCGONfZrAzfxRE_G0DTJ3xCfvwxAl_imQ_AVAFqS6CsLWwt3Shk5_jAa1fH7rxuaE";
+async function notifOn(){
+  const code = (lsGet("haccp-sync-code") || "").trim();
+  if (!cloud || code.length < 8) throw new Error("Collega prima il cloud");
+  if (!("Notification" in window) || !("serviceWorker" in navigator)) throw new Error("Questo telefono non supporta le notifiche");
+  if (Notification.permission === "denied") throw new Error("Notifiche bloccate: attivale dalle impostazioni del telefono per questa app");
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted") throw new Error("Permesso non concesso");
+  const app = await fbApp(), M = await import(FB_B + "firebase-messaging.js");
+  if (!(await M.isSupported())) throw new Error("Notifiche non supportate da questo browser");
+  const reg = await navigator.serviceWorker.ready;
+  const token = await M.getToken(M.getMessaging(app), {vapidKey: VAPID_KEY, serviceWorkerRegistration: reg});
+  if (!token) throw new Error("Nessun codice ricevuto, riprova");
+  const m = cloud.m;
+  await m.setDoc(m.doc(cloud.col.firestore, "kitchens", code, "devices", cloud.dev), {token, by: lsGet("haccp-op") || "", ts: Date.now()});
+  rawSet.call(localStorage, "haccp-notif-on", "1");
+}
 window.cloudApi = {
-  start: cloudStart,
+  start: cloudStart, notifOn,
   connect: (code, name) => { rawSet.call(localStorage, "haccp-sync-code", code.trim()); if (name && name.trim()) rawSet.call(localStorage, "haccp-op", name.trim()); sessionStorage.removeItem("haccp-sync-rl"); location.reload(); },
   disconnect: () => { try { localStorage.removeItem("haccp-sync-code"); } catch(e){} location.reload(); },
   wipe: () => { try { Object.keys(localStorage).filter(k => k.startsWith("haccp-") && !["haccp-op", "haccp-sync-code", "haccp-dev-id"].includes(k)).forEach(k => localStorage.removeItem(k)); } catch(e){} location.reload(); }
@@ -519,6 +536,8 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <label class="f">Codice della cucina (almeno 8 caratteri, non darlo a estranei)<input id="cdCode" type="text" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
 <button type="button" class="p" id="cdGo" style="width:100%">Collega al cloud</button>
 <p id="cdSt" role="status" class="meta"></p>
+<button type="button" id="cdNot" style="width:100%;margin-bottom:6px" hidden>Attiva le notifiche delle 18</button>
+<p id="cdNotSt" class="meta" style="margin-top:0" hidden></p>
 <button type="button" id="cdOff" style="width:100%;margin-bottom:10px" hidden>Scollega questo telefono</button>
 <button type="button" id="cdWipe" style="width:100%">Azzera i dati di prova su questo telefono</button>
 <h2 style="margin-top:28px">Calendario delle chiusure</h2>
@@ -1260,6 +1279,13 @@ renderCal();
     window.cloudApi.connect(c, n);
   };
   $("cdOff").onclick = () => window.cloudApi.disconnect();
+  const nUpd = () => { const on = !!localStorage.getItem("haccp-sync-code"); $("cdNot").hidden = !on; $("cdNotSt").hidden = !on; $("cdNot").textContent = localStorage.getItem("haccp-notif-on") ? "Notifiche attive: tocca per riattivarle" : "Attiva le notifiche delle 18"; if (on && localStorage.getItem("haccp-notif-on") && !$("cdNotSt").textContent) $("cdNotSt").textContent = "Questo telefono riceve il promemoria delle 18 se mancano temperature o pulizie."; };
+  nUpd(); addEventListener("cloudstate", nUpd);
+  $("cdNot").onclick = async () => {
+    $("cdNotSt").textContent = "Attivo…";
+    try { await window.cloudApi.notifOn(); $("cdNotSt").textContent = "Fatto: questo telefono riceverà il promemoria delle 18 se mancano temperature o pulizie. Non nei giorni di chiusura."; nUpd(); }
+    catch(e){ $("cdNotSt").textContent = String((e && e.message) || e).slice(0, 140); }
+  };
   let armed = false;
   $("cdWipe").onclick = () => { if (!armed){ armed = true; $("cdWipe").textContent = "Tocca ancora per cancellare tutto (non si può annullare)"; setTimeout(() => { armed = false; $("cdWipe").textContent = "Azzera i dati di prova su questo telefono"; }, 6000); return; } window.cloudApi.wipe(); };
 })();
