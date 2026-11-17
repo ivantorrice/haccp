@@ -291,7 +291,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <main>
 <div id="oggi" role="region" aria-label="Da fare oggi"></div>
 <div class="seg" id="areaSeg" role="group" aria-label="Area"><button type="button" id="aHaccp" aria-pressed="true" style="min-height:58px;font-size:22px">HACCP</button><button type="button" id="aMag" aria-pressed="false" style="min-height:58px;font-size:22px">Magazzino e costi</button></div>
-<nav class="tabs"><button type="button" id="tTemp" aria-pressed="false">Temperature</button><button type="button" id="tMerce" aria-pressed="false">Merce in arrivo</button><button type="button" id="tAbb" aria-pressed="false">Abbattimento</button><button type="button" id="tPul" aria-pressed="false">Pulizia</button><button type="button" id="tNc" aria-pressed="false">Non conformità</button><button type="button" id="tMis" aria-pressed="false">Mancanti</button><button type="button" id="tMag" aria-pressed="false">Magazzino</button><button type="button" id="tMenu" aria-pressed="false">Menu</button><button type="button" id="tPrep" aria-pressed="false">Preparazioni</button><button type="button" id="tRic" aria-pressed="false">Ricette</button><button type="button" id="tFc" aria-pressed="false">Food cost</button><button type="button" id="tCarta" aria-pressed="false">Carta</button><button type="button" id="tExp" aria-pressed="false">PDF</button><button type="button" id="tPiano" aria-pressed="false">Piano HACCP</button></nav>
+<nav class="tabs"><button type="button" id="tTemp" aria-pressed="false">Temperature</button><button type="button" id="tMerce" aria-pressed="false">Merce in arrivo</button><button type="button" id="tAbb" aria-pressed="false">Abbattimento</button><button type="button" id="tPul" aria-pressed="false">Pulizia</button><button type="button" id="tNc" aria-pressed="false">Non conformità</button><button type="button" id="tMis" aria-pressed="false">Mancanti</button><button type="button" id="tMag" aria-pressed="false">Magazzino</button><button type="button" id="tMenu" aria-pressed="false">Menu</button><button type="button" id="tPrep" aria-pressed="false">Preparazioni</button><button type="button" id="tRic" aria-pressed="false">Menu cucina</button><button type="button" id="tFc" aria-pressed="false">Food cost</button><button type="button" id="tCarta" aria-pressed="false">Carta</button><button type="button" id="tExp" aria-pressed="false">PDF</button><button type="button" id="tPiano" aria-pressed="false">Piano HACCP</button></nav>
 <div id="vox">
 <button type="button" class="p" id="voxBtn" style="width:100%;margin-bottom:10px" hidden>Comando vocale: tocca e parla</button>
 <label class="f" style="margin-bottom:8px">Scrivi o detta il comando (microfono della tastiera)<input id="voxIn" type="text" autocomplete="off" placeholder="es. freezer uno meno ventuno"></label>
@@ -458,7 +458,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 </div>
 
 <div id="vRic" hidden>
-<h1>Ricette</h1>
+<h1>Menu cucina</h1>
 <p class="sub">Scrivi ingredienti in grammi e procedimento. Il costo si calcola dall’ultimo prezzo pagato in magazzino.</p>
 <div id="ric_top"><button type="button" class="p" id="ric_new" style="width:100%;margin-bottom:10px">Nuova ricetta</button><button type="button" id="ric_imp_btn" style="width:100%;margin-bottom:14px">Importa ricetta (da sito, testo o foto)</button></div>
 <div id="ric_imp" hidden>
@@ -502,7 +502,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 
 <div id="vFc" hidden>
 <h1>Food cost</h1>
-<p class="sub">Costo di ogni piatto e percentuale sul prezzo di vendita. Le ricette si scrivono nella scheda Ricette.</p>
+<p class="sub">Costo di ogni piatto e percentuale sul prezzo di vendita. Le ricette si scrivono nella scheda Menu cucina.</p>
 <div class="row"><label class="f" style="flex:1">Obiettivo food cost (%)<input type="number" id="fc_target" step="1" inputmode="decimal"></label><label class="f" style="flex:1">IVA sulla vendita (%)<input type="number" id="fc_iva" step="1" inputmode="decimal"></label></div>
 <label class="chk"><input type="checkbox" id="fc_onlym"> Solo i piatti del menu</label>
 <div id="fc_list"></div>
@@ -1336,6 +1336,82 @@ renderCal();
     return b;
   };
 
+
+  // ---------- ingredienti -> allergeni e simboli ----------
+  const ALN = ["", "Glutine", "Crostacei", "Uova", "Pesce", "Arachidi", "Soia", "Latte", "Frutta a guscio", "Sedano", "Senape", "Sesamo", "Solfiti", "Lupini", "Molluschi"];
+  const normI = t => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’`´]/g, "'");
+  const PRE = [
+    [/latte d[i'] ?(cocco|mandorl\w*|soia|avena|riso|nocciol\w*)/g, "$1"],
+    [/burro d[i'] ?(cacao|karit\w*|cocco)/g, "$1"],
+    [/burro d[i'] ?(arachid\w*|mandorl\w*|nocciol\w*)/g, "$1"],
+    [/farina d[i'] ?(grano saraceno|saraceno|riso|mais|ceci|castagn\w*|mandorl\w*|patate|tapioca|cocco|quinoa|sorgo|miglio|amaranto|teff|soia|lupin\w*|nocciol\w*)/g, "$1"],
+    [/pasta d[i'] ?(mandorl\w*|nocciol\w*|pistacch\w*|acciug\w*)/g, "$1"],
+    [/noci? d[i'] ?cocco/g, "cocco"],
+    [/noce moscata/g, "moscata"],
+    [/grano saraceno/g, "saraceno"],
+    [/pasta d[i'] ?(riso|mais|ceci|lenticchie|legumi)/g, "$1"]
+  ];
+  const RULES = [
+    [/\b(farina|pasta|pane|pangrattato|pan grattato|panko|grano|frumento|orzo|farro|segale|kamut|semol\w*|couscous|cous cous|bulgur|seitan|malto|birra|gnocchi|spaghett\w*|tagliatell\w*|penne|rigatoni|fusilli|linguine|bucatini|paccheri|pappardell\w*|tortell\w*|tortelli|ravioli|agnolotti|cappelletti|lasagn\w*|crostin\w*|bruschett\w*|crackers?|grissini|taralli|focaccia|piadina|pizza|friselle|fette biscottate|amido di frumento)\b/, [1]],
+    [/\b(biscott\w*|frolla|brioche|cornett\w*|croissant|panettone|pandoro|crema pasticcera)\b/, [1, 3, 7]],
+    [/\b(sfoglia|brisee|besciamella|bechamel)\b/, [1, 7]],
+    [/\b(pan di spagna|savoiardi)\b/, [1, 3]],
+    [/\bamarett\w*\b/, [1, 3, 8]],
+    [/\b(gamber\w*|scamp\w*|aragost\w*|astic\w*|granch\w*|mazzancoll\w*|cicala\w*|canocchi\w*|crostace\w*|langost\w*|granseola)\b/, [2]],
+    [/\b(uov\w*|tuorl\w*|album\w*|maionese|mayonnaise|zabaione|meringa\w*|meringh\w*)\b/, [3]],
+    [/\b(pesce|tonno|salmone|merluzz\w*|baccal\w*|stoccafisso|acciug\w*|alici|sardin\w*|branzin\w*|spigola|orata|sgombr\w*|trota|rombo|sogliola|cernia|nasello|dentice|bottarga|colatura|tarama|caviale|ricciola|palamita|lampuga|pescespada|spada|polpa di granchio|surimi)\b/, [4]],
+    [/\barachid\w*|noccioline americane/, [5]],
+    [/\b(soia|tofu|edamame|miso|tamari|lecitina)\b/, [6]],
+    [/\b(latte|burro|panna|formagg\w*|latticin\w*|parmigian\w*|grana|pecorin\w*|mozzarell\w*|ricott\w*|mascarpone|gorgonzola|fontina|provol\w*|scamorz\w*|taleggio|stracchino|caciocavall\w*|burrata|yogurt|yoghurt|gelato|cacio|caciotta|caprino|feta|emmental|groviera|gruyere|brie|camembert|robiola|asiago|montasio|stracciatella|fiordilatte|fior di latte|philadelphia|caseina|siero|ghee|toma|cioccolato bianco|cioccolato al latte)\b/, [7]],
+    [/\b(mandorl\w*|nocciol\w*|pistacch\w*|anacard\w*|acagiu|pinoli|pecan|macadamia|noci|noce|marzapane|gianduia|nutella|croccante)\b/, [8]],
+    [/\bpesto\b/, [7, 8]],
+    [/\b(nutella|gianduia)\b/, [6, 7]],
+    [/\b(sedano|soffritto|mirepoix|brodo|dado)\b/, [9]],
+    [/\b(senape|mostarda)\b/, [10]],
+    [/\bmostarda\b/, [12]],
+    [/\bworcester\w*|salsa tartara\b/, [4, 10]],
+    [/\b(sesamo|tahin\w*|gomasio)\b/, [11]],
+    [/\b(vino|aceto|marsala|prosecco|spumante|champagne|uvetta|uva passa|uva sultanina|vermouth|sherry|porto|brandy|cognac|sidro|zabaione|albicocche secche)\b/, [12]],
+    [/\blupin\w*/, [13]],
+    [/\b(cozz\w*|vongol\w*|calamar\w*|seppi\w*|polpo|polpi|totan\w*|ostric\w*|capesant\w*|cannolicchi|lumach\w*|telline|murice|fasolari|moscardin\w*|frutti di mare|pettin\w*|canestrell\w*|datteri di mare|nero di seppia)\b/, [14]]
+  ];
+  const NONVEG = /\b(carne|manzo|vitell\w*|maiale|suino|agnello|pollo|tacchino|anatra|coniglio|cinghiale|selvaggina|prosciutt\w*|speck|pancetta|guanciale|salame|salami|salsiccia|mortadella|bresaola|lardo|strutto|cotechino|ragu|fegato|trippa|lampredotto|ossobuco|costata|filetto|bistecca|tagliata|wurstel|nduja|culatello|coppa|capocollo|bacon|gelatina|colla di pesce|bottarga|caviale|worcester\w*|salsa di pesce|ossi|midollo|frattaglie|rognon\w*|animelle|cappone|faraona|piccione|quaglia|oca|cervo|capriolo|lepre)\b/;
+  const NONVEGAN = /\b(miele|gelatina|colla di pesce|burro|strutto|lardo|ghee)\b/;
+  function analyze(text){
+    const items = normI(text).split(/[,;\n]+/).map(x => x.trim()).filter(Boolean), set = new Set();
+    let nonveg = false, nonvegan = false;
+    items.forEach(it0 => {
+      let it = it0; PRE.forEach(([re, rep]) => { it = it.replace(re, rep); });
+      RULES.forEach(([re, nums]) => { if (re.test(it)) nums.forEach(n => set.add(n)); });
+      if (NONVEG.test(it)) nonveg = true;
+      if (NONVEGAN.test(it)) nonvegan = true;
+    });
+    if (set.has(2) || set.has(4) || set.has(14)) nonveg = true;
+    if (set.has(3) || set.has(7)) nonvegan = true;
+    const n = [...set].sort((a, b) => a - b);
+    return {any: items.length > 0, n, veg: items.length > 0 && !nonveg, vegan: items.length > 0 && !nonveg && !nonvegan};
+  }
+  const kitchen = () => { try { return (JSON.parse(localStorage.getItem("haccp-ric-v1")) || []).filter(r => r && r.nome).sort((a, b) => String(a.nome).localeCompare(String(b.nome), "it")); } catch(e){ return []; } };
+  const ingrOf = r => [...new Set((r.ingr || []).map(g => String((g && g.prodotto) || "").trim()).filter(Boolean))].join(", ");
+  const fmtPrice = r => { const n = Number(r.prezzo); return n > 0 ? (Number.isInteger(n) ? String(n) : n.toFixed(2).replace(".", ",")) + "€" : ""; };
+  let pick = "";
+  function pickRow(onUse){
+    const rs = kitchen(), row = E("div", {style: "margin:6px 0;padding:8px;border:1px dashed var(--line,#ccc);border-radius:10px"});
+    if (!rs.length){ row.append(E("p", {cls: "meta", text: "Nel Menu cucina non ci sono ancora ricette."})); return row; }
+    const sel = E("select", {style: "width:100%;min-height:44px"});
+    sel.append(E("option", {value: "", text: "Scegli un piatto…"}));
+    rs.forEach((r, i) => sel.append(E("option", {value: String(i), text: r.nome})));
+    const go = E("button", {type: "button", text: "Usa questo piatto", style: "width:100%;margin-top:6px;min-height:44px"});
+    go.onclick = () => { if (sel.value === "") return; onUse(rs[+sel.value]); pick = ""; renderList(); };
+    row.append(sel, go); return row;
+  }
+  function dtFromAnalysis(an, old){
+    const s2 = new Set(old || []); s2.delete("v"); s2.delete("vg");
+    if (an.vegan){ s2.add("v"); s2.add("vg"); } else if (an.veg) s2.add("v");
+    if (an.n.includes(1)) s2.delete("sg");
+    return [...s2];
+  }
+
   // ---------- disegno delle pagine ----------
   const DTI = {"sg": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 22V8\"/><path d=\"M12 2C13.400 3.500 13.400 6 12 7.500C10.600 6 10.600 3.500 12 2z\"/><path d=\"M12 13C9.500 13 7.500 11 7.500 8.5C10 8.5 12 10.5 12 13z\"/><path d=\"M12 13C14.500 13 16.500 11 16.500 8.5C14 8.5 12 10.5 12 13z\"/><path d=\"M12 18.5C9.500 18.5 7.500 16.5 7.500 14.0C10 14.0 12 16.0 12 18.5z\"/><path d=\"M12 18.5C14.500 18.5 16.500 16.5 16.500 14.0C14 14.0 12 16.0 12 18.5z\"/><path d=\"M3 3l18 18\" stroke-width=\"2.200\"/></svg>", "v": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4.500 19.500C4.500 10.500 9.500 5 20 4c-1 10-6 15.500-15.500 15.500z\"/><path d=\"M4.500 19.500L14 10\"/></svg>", "vg": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 21.500V11\"/><path d=\"M12 15C12 11 9 8.500 4.500 8.500 4.500 12.500 7.500 15 12 15z\"/><path d=\"M12 11.500C12 7.500 15 5 19.500 5c0 4-3 6.500-7.500 6.500z\"/></svg>"};
   const DT = [["sg", "SG", "Senza glutine (celiaci)"], ["v", "V", "Vegetariano"], ["vg", "VG", "Vegano"]];
@@ -1389,15 +1465,62 @@ renderCal();
     dn.onclick = () => { if (mv(s.voci, vi, 1)){ sv(); openV = ""; renderList(); } };
     head.append(t, up, dn); wrap.append(head);
     if (openV === key){
+      const inA = E("input", {type: "text", value: v.a || ""});
+      const inI = E("textarea", {rows: "3", value: v.i || "", placeholder: "es. farina, uova, latte, burro, zucchero"});
+      const info = E("div", {cls: "meta", style: "margin:6px 0"}), sgBox = E("div", {cls: "meta", style: "margin:6px 0"}), dtBox = E("div", {style: "margin:8px 0"});
+      const cbs = {};
+      const setDt = arr => { v.dt = arr; if (!v.dt.length) delete v.dt; };
+      const refresh = () => {
+        const an = analyze(v.i || "");
+        if (an.any){
+          if (!v.aMan){ v.a = an.n.join(","); inA.value = v.a; }
+          if (!v.dtMan) setDt(dtFromAnalysis(an, v.dt));
+          else if (an.n.includes(1) && (v.dt || []).includes("sg")) setDt(v.dt.filter(x => x !== "sg"));
+        }
+        DT.forEach(([k]) => { cbs[k].checked = (v.dt || []).includes(k); });
+        info.textContent = ""; sgBox.textContent = "";
+        if (!an.any){ info.textContent = "Scrivi gli ingredienti (separati da virgola) per avere allergeni e simboli in automatico."; return; }
+        info.append(document.createTextNode("Dagli ingredienti: " + (an.n.length ? an.n.map(n => n + " " + ALN[n]).join(", ") : "nessun allergene") + (an.vegan ? " · vegano" : an.veg ? " · vegetariano" : "") + ". "));
+        const calc = an.n.join(","), cur = String(v.a || "").split(/[^0-9]+/).filter(Boolean).map(Number).sort((x, y) => x - y).join(",");
+        if (calc !== cur){
+          const w = E("div", {style: "color:var(--warn);margin-top:4px", text: "Gli allergeni scritti qui sotto (" + (v.a || "nessuno") + ") sono diversi da quelli calcolati. "});
+          const bt = E("button", {type: "button", text: "Usa quelli calcolati", style: "min-height:44px"});
+          bt.onclick = () => { v.aMan = false; v.dtMan = false; refresh(); sv(); };
+          w.append(bt); info.append(w);
+        }
+        if (an.n.includes(1)) sgBox.textContent = "Contiene glutine: non adatto ai celiaci.";
+        else if (!(v.dt || []).includes("sg")){
+          sgBox.append(document.createTextNode("Nessun glutine negli ingredienti elencati. Segna «senza glutine» solo se in cucina non c'è rischio di contaminazione. "));
+          const bt = E("button", {type: "button", text: "Segna senza glutine", style: "min-height:44px"});
+          bt.onclick = () => { setDt([...(v.dt || []), "sg"]); refresh(); sv(); };
+          sgBox.append(bt);
+        } else sgBox.textContent = "Segnato come senza glutine: assicurati che sia così anche per contaminazioni e ingredienti non elencati.";
+      };
+      inA.addEventListener("input", () => { v.a = inA.value; v.aMan = true; sv(); refresh(); });
+      inI.addEventListener("input", () => {
+        if (!(v.i || "").trim()){ if (v.a && v.aMan === undefined) v.aMan = true; if (v.dt && v.dtMan === undefined) v.dtMan = true; }
+        v.i = inI.value; if (!v.i.trim()) delete v.i; refresh(); sv();
+      });
+      DT.forEach(([k, , lab]) => {
+        const cb = E("input", {type: "checkbox"}); cbs[k] = cb;
+        cb.onchange = () => { const s2 = new Set(v.dt || []); if (cb.checked) s2.add(k); else s2.delete(k); if (k === "vg" && cb.checked) s2.add("v"); if (k === "v" && !cb.checked) s2.delete("vg"); if (k !== "sg") v.dtMan = true; setDt([...s2]); refresh(); sv(); };
+        dtBox.append(E("label", {cls: "chk", style: "display:flex;gap:8px;align-items:center;min-height:44px"}, cb, document.createTextNode(lab)));
+      });
+      const pk = key + "#k";
+      const kb = E("button", {type: "button", text: "Prendi dal Menu cucina", style: "width:100%;min-height:44px;margin:6px 0"});
+      kb.onclick = () => { pick = pick === pk ? "" : pk; renderList(); };
+      const rc = E("button", {type: "button", text: "Ricalcola tutto dagli ingredienti", style: "width:100%;min-height:44px;margin:6px 0"});
+      rc.onclick = () => { v.aMan = false; v.dtMan = false; refresh(); sv(); };
       wrap.append(field("Nome del piatto o del vino", v.n, x => { v.n = x; }),
         field("Descrizione (a capo = nuova riga)", v.d, x => { v.d = x; }, true),
-        field("Allergeni (es. 1,3,7)", v.a, x => { v.a = x; }),
-        (() => { const g = E("div", {style: "margin:8px 0"}); g.append(E("div", {cls: "meta", text: "Adatto a (compare accanto al piatto):"}));
-          DT.forEach(([k, , lab]) => { const cb = E("input", {type: "checkbox", checked: (v.dt || []).includes(k)}); cb.onchange = () => { const s2 = new Set(v.dt || []); if (cb.checked) s2.add(k); else s2.delete(k); v.dt = [...s2]; if (!v.dt.length) delete v.dt; sv(); };
-            g.append(E("label", {cls: "chk", style: "display:flex;gap:8px;align-items:center;min-height:44px"}, cb, document.createTextNode(lab))); });
-          return g; })(),
+        kb);
+      if (pick === pk) wrap.append(pickRow(r => { v.i = ingrOf(r); if (!v.n || v.n === "Nuova voce") v.n = r.nome; if (!v.p && fmtPrice(r)) v.p = fmtPrice(r); v.aMan = false; v.dtMan = false; if (!v.i) delete v.i; sv(); }));
+      wrap.append(E("label", {cls: "f"}, document.createTextNode("Ingredienti (restano nascosti: i clienti non li vedono)"), inI), info, rc,
+        E("label", {cls: "f"}, document.createTextNode("Allergeni (es. 1,3,7): si compilano da soli, puoi correggerli"), inA),
+        E("div", {cls: "meta", text: "Adatto a (compare accanto al piatto):"}), dtBox, sgBox,
         field("Prezzo (come deve comparire, es. 12€)", v.p, x => { v.p = x; }),
         arm("Elimina questa voce", () => { s.voci.splice(vi, 1); sv(); openV = ""; renderList(); }));
+      refresh();
     }
     return wrap;
   }
@@ -1459,6 +1582,10 @@ renderCal();
           const add = E("button", {type: "button", text: "+ Aggiungi voce", style: "width:100%;margin-top:6px"});
           add.onclick = () => { s.voci.push({n: "Nuova voce", d: "", a: "", p: ""}); sv(); openV = "s" + i + ":" + si + "." + (s.voci.length - 1); renderList(); };
           c.append(add);
+          const sk = "sec" + key, kb = E("button", {type: "button", text: "+ Dal Menu cucina", style: "width:100%;margin-top:6px;min-height:44px"});
+          kb.onclick = () => { pick = pick === sk ? "" : sk; renderList(); };
+          c.append(kb);
+          if (pick === sk) c.append(pickRow(r => { const i2 = ingrOf(r), an = analyze(i2), nv = {n: r.nome, d: "", a: an.n.join(","), p: fmtPrice(r)}; if (i2) nv.i = i2; const dt = dtFromAnalysis(an, []); if (an.any && dt.length) nv.dt = dt; s.voci.push(nv); sv(); openV = "s" + i + ":" + si + "." + (s.voci.length - 1); }));
         }
         box.append(c);
       });
@@ -1645,7 +1772,7 @@ function qrSvg(text){
     pbSt("Pubblico…");
     try {
       const P = await pubInit(); if (!P.auth.currentUser){ pbSt("Accedi prima.", true); return; }
-      await P.fs.setDoc(P.fs.doc(P.db, "public", "carta"), {v: JSON.stringify(carta), ts: Date.now(), by: P.auth.currentUser.email});
+      await P.fs.setDoc(P.fs.doc(P.db, "public", "carta"), {v: JSON.stringify(carta, (k, val) => (k === "i" || k === "aMan" || k === "dtMan") ? undefined : val), ts: Date.now(), by: P.auth.currentUser.email});
       const t = new Date().toLocaleString("it-IT", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"});
       try { localStorage.setItem("haccp-pub-last", t); } catch(e){}
       pbSt("Pubblicato il " + t + ". Il menù online è aggiornato.");
@@ -2207,7 +2334,7 @@ $("fc_onlym").onchange = () => renderFc(true);
 function renderFc(keep){
   if (!keep){ $("fc_target").value = cfg.target; $("fc_iva").value = cfg.iva; }
   const box = $("fc_list"); box.textContent = "";
-  if (!ric.length){ box.append(h("p", {class: "empty", text: "Nessuna ricetta. Scrivile nella scheda Ricette: per avere i costi serve anche caricare le bolle nel Magazzino."})); return; }
+  if (!ric.length){ box.append(h("p", {class: "empty", text: "Nessuna ricetta. Scrivile nella scheda Menu cucina: per avere i costi serve anche caricare le bolle nel Magazzino."})); return; }
   const onlyM = $("fc_onlym").checked;
   const list = ric.filter(r => !onlyM || r.menu).map(r => { const c = costRic(r), n = r.prezzo > 0 ? netto(r.prezzo) : null; return {r, c, n, fc: n ? c.porz / n * 100 : null}; });
   const wm = list.filter(x => x.fc != null && x.r.menu);
@@ -2502,7 +2629,7 @@ window.prepApi = {render: () => { fillProdList(); renderPrep(); }, today: prepTo
 
 function renderMenuP(){
   const box = $("mn_p"); box.textContent = "";
-  if (!ric.length){ box.append(h("p", {class: "empty", text: "Non hai ancora ricette. Scrivile nella scheda Ricette, poi torna qui per scegliere quelle del menu."})); return; }
+  if (!ric.length){ box.append(h("p", {class: "empty", text: "Non hai ancora ricette. Scrivile nella scheda Menu cucina, poi torna qui per scegliere quelle del menu."})); return; }
   box.append(h("p", {class: "meta", text: (n => n + (n === 1 ? " piatto" : " piatti") + " in menu su " + ric.length + (ric.length === 1 ? " ricetta" : " ricette") + ". Spunta i piatti del menu attuale.")(ric.filter(r => r.menu).length)}));
   CATS.forEach(c => {
     const rs = ric.filter(r => (r.cat || "Altro") === c).sort(byNome); if (!rs.length) return;
