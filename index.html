@@ -1520,6 +1520,12 @@ renderCal();
           bt.onclick = () => { v.aMan = false; v.dtMan = false; refresh(); sv(); };
           w.append(bt); info.append(w);
         }
+        if (v.aPrev && !v.aMan && v.aPrev !== v.a){
+          const w2 = E("div", {style: "margin-top:4px", text: "Prima c'era scritto: " + v.aPrev + ". "});
+          const b2 = E("button", {type: "button", text: "Rimetti quelli di prima", style: "min-height:44px"});
+          b2.onclick = () => { v.a = v.aPrev; v.aMan = true; inA.value = v.a; refresh(); sv(); };
+          w2.append(b2); info.append(w2);
+        }
         if (an.n.includes(1)) sgBox.textContent = "Contiene glutine: non adatto ai celiaci.";
         else if (!(v.dt || []).includes("sg")){
           sgBox.append(document.createTextNode("Nessun glutine negli ingredienti elencati. Segna «senza glutine» solo se in cucina non c'è rischio di contaminazione. "));
@@ -1530,7 +1536,7 @@ renderCal();
       };
       inA.addEventListener("input", () => { v.a = inA.value; v.aMan = true; sv(); refresh(); });
       inI.addEventListener("input", () => {
-        if (!(v.i || "").trim()){ if (v.a && v.aMan === undefined) v.aMan = true; if (v.dt && v.dtMan === undefined) v.dtMan = true; }
+        if (!(v.i || "").trim()){ if (v.a) v.aPrev = v.a; else delete v.aPrev; }
         v.i = inI.value; if (!v.i.trim()) delete v.i; refresh(); sv();
       });
       DT.forEach(([k, , lab]) => {
@@ -1804,7 +1810,7 @@ function qrSvg(text){
     pbSt("Pubblico…");
     try {
       const P = await pubInit(); if (!P.auth.currentUser){ pbSt("Accedi prima.", true); return; }
-      await P.fs.setDoc(P.fs.doc(P.db, "public", "carta"), {v: JSON.stringify(carta, (k, val) => (k === "i" || k === "aMan" || k === "dtMan") ? undefined : val), ts: Date.now(), by: P.auth.currentUser.email});
+      await P.fs.setDoc(P.fs.doc(P.db, "public", "carta"), {v: JSON.stringify(carta, (k, val) => (k === "i" || k === "aMan" || k === "dtMan" || k === "aPrev") ? undefined : val), ts: Date.now(), by: P.auth.currentUser.email});
       const t = new Date().toLocaleString("it-IT", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"});
       try { localStorage.setItem("haccp-pub-last", t); } catch(e){}
       pbSt("Pubblicato il " + t + ". Il menù online è aggiornato.");
