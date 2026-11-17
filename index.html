@@ -10,8 +10,8 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script>
 const FB_CFG = {apiKey:"AIzaSyDgR7_yy8vwORgM1aJcDNU9tkyGfvSDsEk",authDomain:"vittoria-haccp.firebaseapp.com",projectId:"vittoria-haccp",storageBucket:"vittoria-haccp.firebasestorage.app",messagingSenderId:"122368607372",appId:"1:122368607372:web:3b4b70f515ee5eae9367a9"};
-const AI_FAST = [{m:"gemini-2.5-flash-lite"}, {m:"gemini-2.5-flash", tc:0}, {m:"gemini-2.5-flash"}];
-const AI_SMART = [{m:"gemini-2.5-flash", tc:0}, {m:"gemini-2.5-flash"}, {m:"gemini-2.0-flash"}];
+const AI_FAST = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.1-flash-lite"}];
+const AI_SMART = [{m:"gemini-3.8-flash"}, {m:"gemini-3.6-flash"}, {m:"gemini-3.5-flash-lite"}];
 async function shrinkImg(blob, max){
   try {
     const bmp = await createImageBitmap(blob);
