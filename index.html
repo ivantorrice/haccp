@@ -271,7 +271,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <main>
 <div id="oggi" role="region" aria-label="Da fare oggi"></div>
 <div class="seg" id="areaSeg" role="group" aria-label="Area"><button type="button" id="aHaccp" aria-pressed="true" style="min-height:58px;font-size:22px">HACCP</button><button type="button" id="aMag" aria-pressed="false" style="min-height:58px;font-size:22px">Magazzino e costi</button></div>
-<nav class="tabs"><button type="button" id="tTemp" aria-pressed="false">Temperature</button><button type="button" id="tMerce" aria-pressed="false">Merce in arrivo</button><button type="button" id="tAbb" aria-pressed="false">Abbattimento</button><button type="button" id="tPul" aria-pressed="false">Pulizia</button><button type="button" id="tNc" aria-pressed="false">Non conformità</button><button type="button" id="tMis" aria-pressed="false">Mancanti</button><button type="button" id="tMag" aria-pressed="false">Magazzino</button><button type="button" id="tMenu" aria-pressed="false">Menu</button><button type="button" id="tPrep" aria-pressed="false">Preparazioni</button><button type="button" id="tRic" aria-pressed="false">Ricette</button><button type="button" id="tFc" aria-pressed="false">Food cost</button><button type="button" id="tCarta" aria-pressed="false">Carta</button><button type="button" id="tExp" aria-pressed="false">PDF</button></nav>
+<nav class="tabs"><button type="button" id="tTemp" aria-pressed="false">Temperature</button><button type="button" id="tMerce" aria-pressed="false">Merce in arrivo</button><button type="button" id="tAbb" aria-pressed="false">Abbattimento</button><button type="button" id="tPul" aria-pressed="false">Pulizia</button><button type="button" id="tNc" aria-pressed="false">Non conformità</button><button type="button" id="tMis" aria-pressed="false">Mancanti</button><button type="button" id="tMag" aria-pressed="false">Magazzino</button><button type="button" id="tMenu" aria-pressed="false">Menu</button><button type="button" id="tPrep" aria-pressed="false">Preparazioni</button><button type="button" id="tRic" aria-pressed="false">Ricette</button><button type="button" id="tFc" aria-pressed="false">Food cost</button><button type="button" id="tCarta" aria-pressed="false">Carta</button><button type="button" id="tExp" aria-pressed="false">PDF</button><button type="button" id="tPiano" aria-pressed="false">Piano HACCP</button></nav>
 <div id="vox">
 <button type="button" class="p" id="voxBtn" style="width:100%;margin-bottom:10px" hidden>Comando vocale: tocca e parla</button>
 <label class="f" style="margin-bottom:8px">Scrivi o detta il comando (microfono della tastiera)<input id="voxIn" type="text" autocomplete="off" placeholder="es. freezer uno meno ventuno"></label>
@@ -484,6 +484,13 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <div id="fc_list"></div>
 </div>
 
+<div id="vPiano" hidden>
+<h1>Piano di autocontrollo</h1>
+<p class="sub">Vittoria 1926 Osteria Contemporanea, Rev. 00 del 06/04/2026 (dott. Lorenzo Reale). Da qui lo apri sempre, anche in cucina.</p>
+<a id="pnOpen" href="piano-haccp.pdf" target="_blank" rel="noopener" style="background:var(--acc);color:var(--accink);display:block;text-align:center;padding:16px;border-radius:12px;font-weight:700;text-decoration:none;margin-bottom:12px">Apri il piano (PDF, 96 pagine)</a>
+<p class="meta">Pagine utili: limiti critici e CCP p. 51-70, pulizia e sanificazione p. 71-76, controllo temperature p. 80, ricezione merci p. 87-89, non conformità p. 93.</p>
+<p class="meta">Se il telefono non lo mostra, scegli «Apri con» un lettore PDF. Dopo la prima apertura resta disponibile anche senza rete.</p>
+</div>
 <div id="vExp" hidden>
 <h1>PDF dei registri</h1>
 <p class="sub">Scegli il mese e salva il registro da stampare o mostrare all’ASL.</p>
@@ -685,8 +692,8 @@ function scadList(){
   return load("haccp-trac-v1", []).filter(e => (e.scadenza || "").trim() && !done[e.t]).map(e => { const d = parseScad(e.scadenza); return {e, d, left: d ? Math.round((new Date(d + "T12:00:00") - new Date(today + "T12:00:00")) / 864e5) : null}; }).sort((a, b) => (a.d || "9999") < (b.d || "9999") ? -1 : 1);
 }
 let lastH = "t", lastM = "g";
-const HID = ["tTemp", "tMerce", "tAbb", "tPul", "tNc", "tMis", "tExp"], MID = ["tMag", "tMenu", "tPrep", "tRic", "tFc", "tCarta"];
-const VIEWS = {t:["vTemp","tTemp"], m:["vMerce","tMerce"], a:["vAbb","tAbb"], p:["vPul","tPul"], n:["vNc","tNc"], x:["vMis","tMis"], g:["vMag","tMag"], u:["vMenu","tMenu"], q:["vPrep","tPrep"], r:["vRic","tRic"], f:["vFc","tFc"], k:["vCarta","tCarta"], e:["vExp","tExp"]};
+const HID = ["tTemp", "tMerce", "tAbb", "tPul", "tNc", "tMis", "tExp", "tPiano"], MID = ["tMag", "tMenu", "tPrep", "tRic", "tFc", "tCarta"];
+const VIEWS = {t:["vTemp","tTemp"], m:["vMerce","tMerce"], a:["vAbb","tAbb"], p:["vPul","tPul"], n:["vNc","tNc"], x:["vMis","tMis"], g:["vMag","tMag"], u:["vMenu","tMenu"], q:["vPrep","tPrep"], r:["vRic","tRic"], f:["vFc","tFc"], k:["vCarta","tCarta"], e:["vExp","tExp"], z:["vPiano","tPiano"]};
 function show(w){
   const inM = "gurqfk".includes(w); if (inM) lastM = w; else lastH = w;
   HID.forEach(i => { $(i).hidden = inM; }); MID.forEach(i => { $(i).hidden = !inM; });
