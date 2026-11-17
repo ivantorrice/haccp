@@ -47,6 +47,12 @@ body{background:#EDE2D0;color:#3b3225}
 .mi .p{font:700 18px Montserrat,Arial,sans-serif;color:#3b3225;white-space:nowrap;padding-left:4px}
 .mt{font:500 16px/1.6 Montserrat,Arial,sans-serif;color:#5b4f3e;white-space:pre-line;margin-top:24px}
 .mq{font:700 26px/1.3 Montserrat,Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#827560;text-align:center;white-space:pre-line;margin:22px 0}
+.al{margin-top:34px}.al h2{font:700 24px Montserrat,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#827560;margin:0 0 6px;padding-bottom:8px;border-bottom:2px solid #827560}
+.al p{font:500 14px/1.5 Montserrat,Arial,sans-serif;color:#5b4f3e;margin:10px 0}
+.al li{font:500 16px/1.4 Montserrat,Arial,sans-serif;color:#3b3225;padding:8px 0;border-bottom:1px solid rgba(130,117,96,.35);list-style:none;display:flex;gap:12px}
+.al li b{flex:0 0 28px;color:#827560}.al ul{margin:0;padding:0}
+.dt{display:inline-block;font:700 10px Montserrat,Arial,sans-serif;border:1.5px solid #827560;color:#827560;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle;line-height:1.4}.leg{display:flex;flex-wrap:wrap;gap:6px 14px;margin:6px 0 10px;font:500 14px Montserrat,Arial,sans-serif;color:#5b4f3e}.leg .dt{margin:0 6px 0 0}
+.mh .an{display:block;margin-top:8px;font:600 13px Montserrat,Arial,sans-serif;color:#827560}
 .mf{text-align:center;font:600 12px Montserrat,Arial,sans-serif;color:#827560;margin:40px 0 0}
 </style>
 </head>
@@ -91,9 +97,10 @@ const LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgUAAAFKCAYAAACNeiwp
   }
 
 const CACHE = "menu-pubblico-v1";
+const DT = [["sg", "SG", "Senza glutine (celiaci)"], ["v", "V", "Vegetariano"], ["vg", "VG", "Vegano"]];
 function show(carta){
   const box = document.getElementById("pages"); box.textContent = "";
-  const head = E("div", {cls: "mh"}); head.append(E("img", {src: LOGO, alt: "Vittoria 1926 Osteria Contemporanea"})); box.append(head);
+  const head = E("div", {cls: "mh"}); head.append(E("img", {src: LOGO, alt: "Vittoria 1926 Osteria Contemporanea"}), E("a", {cls: "an", href: "#allergeni", text: "Elenco degli allergeni"})); box.append(head);
   // raggruppa: le sezioni senza titolo continuano la precedente
   const secs = [];
   carta.forEach(p => {
@@ -115,10 +122,16 @@ function show(carta){
     if (s.motto) sec.append(E("div", {cls: "mq", text: s.motto.split(/\s+/).join("\n")}));
     s.voci.forEach(v => {
       const n = E("div", {cls: "n"}, document.createTextNode(v.n || "")); if (v.a) n.append(E("sup", {text: v.a}));
+      { const f = v.dt || []; DT.filter(x => f.includes(x[0]) && !(x[0] === "v" && f.includes("vg"))).forEach(x => n.append(E("span", {cls: "dt", text: x[1]}))); }
       sec.append(E("div", {cls: "mi"}, E("div", {cls: "l"}, n, v.d ? E("div", {cls: "d", text: v.d}) : null), E("div", {cls: "p", text: v.p || ""})));
     });
     main.append(sec);
   });
+  const ALL = ["Cereali contenenti glutine","Crostacei","Uova","Pesce","Arachidi","Soia","Latte","Frutta a guscio","Sedano","Senape","Sesamo","Anidride solforosa e solfiti","Lupini","Molluschi"];
+  const al = E("section", {cls: "al ms", id: "allergeni"}); al.append(E("h2", {text: "Allergeni"}), E("p", {text: "I numeri accanto ai piatti indicano gli allergeni presenti. Per intolleranze o allergie chiedi pure al nostro personale."}));
+  const lg = E("div", {cls: "leg"}); DT.forEach(x => lg.append(E("span", {}, E("span", {cls: "dt", text: x[1]}), document.createTextNode(x[2])))); al.append(E("p", {text: "Piatti adatti a una dieta particolare:"}), lg);
+  const ul = E("ul"); ALL.forEach((t, i) => ul.append(E("li", {}, E("b", {text: String(i + 1)}), document.createTextNode(t)))); al.append(ul);
+  main.append(al); nav.append(E("a", {href: "#allergeni", text: "Allergeni"}));
   if (nav.children.length > 1) box.append(nav);
   box.append(main, E("div", {cls: "mf", text: "Vittoria 1926 Osteria Contemporanea"}));
   document.getElementById("msg").hidden = true;
