@@ -520,13 +520,14 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 
 <div id="vPren" hidden>
 <h1>Prenotazioni</h1>
-<div class="seg" role="group" aria-label="Sezioni prenotazioni" style="margin-bottom:12px"><button type="button" id="pnB_g" aria-pressed="true">Giornata</button><button type="button" id="pnB_r" aria-pressed="false">Rubrica clienti</button></div>
+<div class="seg" role="group" aria-label="Sezioni prenotazioni" style="margin-bottom:12px"><button type="button" id="pnB_g" aria-pressed="true">Giornata</button><button type="button" id="pnB_r" aria-pressed="false">Rubrica clienti</button><button type="button" id="pnB_s" aria-pressed="false">Riepilogo</button></div>
 <div id="pn_g">
 <div class="row" style="align-items:end;margin-bottom:10px"><button type="button" id="pn_prev" aria-label="Giorno prima" style="min-width:52px">◀</button><label class="f" style="flex:1;margin:0"><input type="date" id="pn_day"></label><button type="button" id="pn_next" aria-label="Giorno dopo" style="min-width:52px">▶</button></div>
 <button type="button" id="pn_today" style="width:100%;margin-bottom:12px">Oggi</button>
 <div id="pn_head"></div><div id="pn_list"></div><div id="pn_form"></div>
 </div>
 <div id="pn_r" hidden></div>
+<div id="pn_s" hidden></div>
 <datalist id="pn_rub"></datalist>
 </div>
 
@@ -2761,7 +2762,7 @@ const parse = s => new Date(s + "T12:00:00");
 const DN = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
 const MN = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
 const E = (t, p, ...k) => { const e = document.createElement(t); if (p) for (const a in p){ if (a === "text") e.textContent = p[a]; else if (a === "cls") e.className = p[a]; else if (a === "on") for (const ev in p.on) e.addEventListener(ev, p.on[ev]); else e.setAttribute(a, p[a]); } k.forEach(x => { if (x != null) e.append(x); }); return e; };
-let day = ymd(new Date()), sub = "g", editId = null, over = false, openC = "";
+let day = ymd(new Date()), sub = "g", editId = null, over = false, openC = "", per = "f14";
 const limit = () => { const v = Number(rd(KL, 54)); return v > 0 ? v : 54; };
 const live = () => rd(K, []).filter(b => !b.x);
 const active = d => live().filter(b => b.d === d && b.st !== "ann");
@@ -2879,14 +2880,69 @@ function rubView(){
   };
   q.addEventListener("input", draw); box.append(E("label", {cls: "f"}, document.createTextNode("Rubrica clienti"), q), out); draw();
 }
+
+function sumView(){
+  const box = $("pn_s"); box.textContent = "";
+  const NS = "http://www.w3.org/2000/svg", lim = limit(), now = new Date(), today = ymd(now);
+  const seg = E("div", {cls: "seg", style: "margin-bottom:12px;flex-wrap:wrap"});
+  [["f14", "Prossimi 14 giorni"], ["p30", "Ultimi 30 giorni"], ["m", "Questo mese"]].forEach(([k, lab]) => { const b = E("button", {type: "button", text: lab, style: "min-height:48px;flex:1 1 30%;font-size:16px"}); b.setAttribute("aria-pressed", per === k); b.onclick = () => { per = k; sumView(); }; seg.append(b); });
+  box.append(seg);
+  const days = [], d0 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12);
+  if (per === "f14") for (let i = 0; i < 14; i++){ const d = new Date(d0); d.setDate(d.getDate() + i); days.push(ymd(d)); }
+  else if (per === "p30") for (let i = 29; i >= 0; i--){ const d = new Date(d0); d.setDate(d.getDate() - i); days.push(ymd(d)); }
+  else { const n = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(); for (let i = 1; i <= n; i++) days.push(now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(i)); }
+  const data = days.map(d => ({d, tot: total(d), n: active(d).length, t: turno(d)})).map(x => Object.assign(x, {closed: x.t === "Chiuso" && !x.n}));
+  const open = data.filter(x => !x.closed), tot = open.reduce((a, x) => a + x.tot, 0), nb = open.reduce((a, x) => a + x.n, 0);
+  const ann = live().filter(b => b.st === "ann" && days.includes(b.d)).length;
+  const best = open.reduce((m, x) => !m || x.tot > m.tot ? x : m, null);
+  const full = open.filter(x => x.tot >= lim * 0.9).length;
+  const stat = (v, l) => E("div", {style: "flex:1 1 44%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card)"}, E("div", {style: "font-size:24px;font-weight:700", text: v}), E("div", {cls: "meta", style: "margin:0", text: l}));
+  const g = E("div", {style: "display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px"});
+  g.append(stat(String(tot), "coperti prenotati"), stat(String(nb), nb === 1 ? "prenotazione" : "prenotazioni"),
+    stat(open.length ? (tot / open.length).toFixed(1).replace(".", ",") : "0", "coperti per servizio (media)"),
+    stat(open.length ? Math.round(tot / open.length / lim * 100) + "%" : "0%", "riempimento medio (limite " + lim + ")"),
+    stat(nb ? (tot / nb).toFixed(1).replace(".", ",") : "0", "persone per prenotazione"),
+    stat(String(full), full === 1 ? "serata quasi piena (90%+)" : "serate quasi piene (90%+)"));
+  box.append(g);
+  if (best && best.tot > 0){ const w = parse(best.d); box.append(E("p", {cls: "meta", text: "Giorno migliore: " + DN[w.getDay()] + " " + w.getDate() + " " + MN[w.getMonth()] + " con " + best.tot + " coperti." + (ann ? " Prenotazioni annullate nel periodo: " + ann + "." : "")})); }
+  // grafico a barre: coperti per giorno
+  const W = 360, H = 190, L = 28, B = 28, T = 10, n = data.length, bw = (W - L - 4) / n, mx = Math.max(lim, ...data.map(x => x.tot)) * 1.08, y = v => T + (H - T - B) * (1 - v / mx);
+  const svg = document.createElementNS(NS, "svg"); svg.setAttribute("viewBox", "0 0 " + W + " " + H); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", "Coperti prenotati giorno per giorno"); svg.style.cssText = "width:100%;height:auto;display:block;margin:6px 0 14px";
+  const el = (t, a, txt) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; svg.append(e); return e; };
+  [0, Math.round(lim / 2)].forEach(v => { el("line", {x1: L, x2: W - 2, y1: y(v), y2: y(v), stroke: "var(--line)", "stroke-width": 1}); el("text", {x: L - 4, y: y(v) + 4, "text-anchor": "end", "font-size": 10, fill: "var(--mute)"}, v); });
+  data.forEach((x, i) => {
+    const bx = L + 2 + i * bw, h = Math.max(0, (H - T - B) * x.tot / mx), w = parse(x.d), fut = x.d > today;
+    const r = el("rect", {x: bx + bw * 0.12, y: H - B - h, width: Math.max(2, bw * 0.76), height: x.closed ? 0 : h, rx: 2, fill: x.tot > lim ? "var(--warn)" : "var(--acc)", opacity: fut ? 0.65 : 1, style: "cursor:pointer"});
+    if (x.d === today){ r.setAttribute("stroke", "var(--ink)"); r.setAttribute("stroke-width", 1.5); }
+    r.addEventListener("click", () => { setDay(x.d); sub = "g"; render(); });
+    const show = n <= 16 || w.getDay() === 1 || i === 0;
+    if (show) el("text", {x: bx + bw / 2, y: H - B + 12, "text-anchor": "middle", "font-size": 9, fill: "var(--mute)"}, w.getDate());
+    if (n <= 16) el("text", {x: bx + bw / 2, y: H - B + 22, "text-anchor": "middle", "font-size": 8, fill: "var(--mute)"}, DN[w.getDay()].slice(0, 2));
+    if (n <= 16 && x.tot > 0) el("text", {x: bx + bw / 2, y: H - B - h - 3, "text-anchor": "middle", "font-size": 9, fill: "var(--ink)"}, x.tot);
+  });
+  el("line", {x1: L, x2: W - 2, y1: y(lim), y2: y(lim), stroke: "var(--warn)", "stroke-width": 1.2, "stroke-dasharray": "4 3"});
+  el("text", {x: L - 4, y: y(lim) + 4, "text-anchor": "end", "font-size": 10, fill: "var(--warn)"}, lim);
+  box.append(E("b", {style: "display:block;margin-top:6px", text: "Coperti giorno per giorno"}), E("p", {cls: "meta", style: "margin:2px 0 0", text: "La linea tratteggiata è il limite. Tocca una barra per aprire quel giorno."}), svg);
+  // media per giorno della settimana
+  const ws = [1, 3, 4, 5, 6, 0], names = {1: "Lunedì", 3: "Mercoledì", 4: "Giovedì", 5: "Venerdì", 6: "Sabato", 0: "Domenica"};
+  const avg = ws.map(wd => { const xs = open.filter(x => parse(x.d).getDay() === wd); return {wd, n: xs.length, a: xs.length ? xs.reduce((a, x) => a + x.tot, 0) / xs.length : 0}; });
+  const top = Math.max(lim, ...avg.map(x => x.a));
+  box.append(E("b", {style: "display:block;margin:6px 0 6px", text: "Media coperti per giorno della settimana"}));
+  avg.forEach(x => box.append(E("div", {style: "display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:15px"},
+    E("span", {style: "width:92px", text: names[x.wd]}),
+    E("div", {style: "flex:1;height:14px;border-radius:7px;background:var(--line);overflow:hidden"}, E("div", {style: "height:100%;width:" + (x.a / top * 100) + "%;background:var(--acc)"})),
+    E("span", {style: "width:44px;text-align:right;font-variant-numeric:tabular-nums", text: x.n ? x.a.toFixed(0) : "–"}))));
+  box.append(E("p", {cls: "meta", text: "I dati sono quelli delle prenotazioni inserite nell'app: più la usate, più il riepilogo diventa utile. Il martedì (chiuso) non conta nelle medie; i giorni aperti senza prenotazioni contano come serate vuote."}));
+}
 function render(){
   try { barUpd(); } catch(e){}
-  ["g", "r"].forEach(k => { $("pn_" + k).hidden = k !== sub; $("pnB_" + k).setAttribute("aria-pressed", k === sub); });
+  ["g", "r", "s"].forEach(k => { $("pn_" + k).hidden = k !== sub; $("pnB_" + k).setAttribute("aria-pressed", k === sub); });
   $("pn_day").value = day; fillDl();
-  if (sub === "g"){ head(); list(); if (!$("pn_form").firstChild) form(); } else rubView();
+  if (sub === "g"){ head(); list(); if (!$("pn_form").firstChild) form(); } else if (sub === "r") rubView(); else sumView();
 }
 $("pnB_g").onclick = () => { sub = "g"; render(); };
 $("pnB_r").onclick = () => { sub = "r"; render(); };
+$("pnB_s").onclick = () => { sub = "s"; render(); };
 const setDay = d => { day = d; editId = null; over = false; $("pn_form").textContent = ""; render(); };
 $("pn_day").addEventListener("change", () => { if ($("pn_day").value) setDay($("pn_day").value); });
 $("pn_prev").onclick = () => { const d = parse(day); d.setDate(d.getDate() - 1); setDay(ymd(d)); };
@@ -2899,10 +2955,10 @@ const bar = E("button", {type: "button", id: "pnBar", style: "display:none;width
 const ogEl = $("oggi"); if (ogEl && ogEl.parentNode) ogEl.parentNode.insertBefore(bar, ogEl);
 function barUpd(){
   const today = ymd(new Date()), t = turno(today);
-  if (t === "Chiuso"){ bar.style.display = "none"; return; }
   const tot = total(today), n = active(today).length, lim = limit();
+  if (t === "Chiuso" && !n){ bar.style.display = "none"; return; }
   bar.style.display = "block"; bar.className = tot > lim ? "bad" : "";
-  bar.textContent = (t === "Pranzo" ? "Prenotati a pranzo: " : "Prenotati stasera: ") + tot + " coperti" + " (" + n + (n === 1 ? " prenotazione" : " prenotazioni") + ") · limite " + lim;
+  bar.textContent = (t === "Pranzo" ? "Prenotati a pranzo: " : t === "Chiuso" ? "Oggi è chiuso, prenotati: " : "Prenotati stasera: ") + tot + " coperti" + " (" + n + (n === 1 ? " prenotazione" : " prenotazioni") + ") · limite " + lim;
 }
 bar.onclick = () => { $("aCarta").click(); $("tPren").click(); setDay(ymd(new Date())); };
 const SEEN = "haccp-pren-seen";
