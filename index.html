@@ -10,7 +10,18 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script>
 const FB_CFG = {apiKey:"AIzaSyDgR7_yy8vwORgM1aJcDNU9tkyGfvSDsEk",authDomain:"vittoria-haccp.firebaseapp.com",projectId:"vittoria-haccp",storageBucket:"vittoria-haccp.firebasestorage.app",messagingSenderId:"122368607372",appId:"1:122368607372:web:3b4b70f515ee5eae9367a9"};
-const AI_MODELS = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"];
+const AI_FAST = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-flash-latest"];
+const AI_SMART = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"];
+async function shrinkImg(blob, max){
+  try {
+    const bmp = await createImageBitmap(blob);
+    const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    if (k >= 1 && blob.size < 400000) return blob;
+    const c = document.createElement("canvas"); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    return await new Promise(ok => c.toBlob(x => ok(x || blob), "image/jpeg", 0.8));
+  } catch(e){ return blob; }
+}
 let aiP = null;
 function aiInit(){
   if (aiP) return aiP;
@@ -29,16 +40,19 @@ const aiSample = {
   limits: async () => ({images: true}),
   json: async (prompt, opts) => {
     const {ai, getGenerativeModel} = await aiInit();
+    const fast = !opts || opts.modelTier === "quick";
     const parts = [prompt + "\n\nRispondi SOLO con JSON valido, senza testo prima o dopo."];
-    for (const im of ((opts && opts.images) || [])) parts.push({inlineData: {mimeType: im.type || "image/jpeg", data: await b64(im)}});
+    for (const im of ((opts && opts.images) || [])){ const sm = await shrinkImg(im, fast ? 1280 : 1800); parts.push({inlineData: {mimeType: sm.type || "image/jpeg", data: await b64(sm)}}); }
     let lastErr = null;
-    for (const m of AI_MODELS){
+    for (const m of (fast ? AI_FAST : AI_SMART)){
       try {
-        const model = getGenerativeModel(ai, {model: m, generationConfig: {responseMimeType: "application/json", temperature: 0.1}});
+        const gc = {responseMimeType: "application/json", temperature: 0.1};
+        if (/2\.5-flash$/.test(m)) gc.thinkingConfig = {thinkingBudget: 0};
+        const model = getGenerativeModel(ai, {model: m, generationConfig: gc});
         const res = await model.generateContent(parts);
         let t = res.response.text().trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
         return JSON.parse(t);
-      } catch(e){ lastErr = e; if (!/not found|404|no longer|deprecat|unsupported/i.test(String(e && e.message))) break; }
+      } catch(e){ lastErr = e; if (!/not found|404|no longer|deprecat|unsupported|thinking/i.test(String(e && e.message))) break; }
     }
     throw lastErr || new Error("ai");
   }
