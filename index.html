@@ -36,24 +36,33 @@ function aiInit(){
   return aiP;
 }
 const b64 = blob => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.onerror = ko; r.readAsDataURL(blob); });
+function aiShow(t){
+  try { let d = document.getElementById("aiT"); if (!d){ d = document.createElement("div"); d.id = "aiT"; d.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:99;background:#222;color:#fff;font:12px/1.4 monospace;padding:6px 10px;border-radius:8px;opacity:.92"; d.onclick = () => d.remove(); document.body.appendChild(d); } d.textContent = t; } catch(e){}
+}
 const aiSample = {
   limits: async () => ({images: true}),
   json: async (prompt, opts) => {
-    const {ai, getGenerativeModel} = await aiInit();
+    const T0 = performance.now(), lap = []; const mark = n => lap.push(n + " " + ((performance.now() - T0) / 1000).toFixed(1) + "s");
+    aiShow("AI: avvio…");
+    const {ai, getGenerativeModel} = await aiInit(); mark("carico");
     const fast = !opts || opts.modelTier === "quick";
     const parts = [prompt + "\n\nRispondi SOLO con JSON valido, senza testo prima o dopo."];
     for (const im of ((opts && opts.images) || [])){ const sm = await shrinkImg(im, fast ? 1280 : 1800); parts.push({inlineData: {mimeType: sm.type || "image/jpeg", data: await b64(sm)}}); }
+    mark("foto");
     let lastErr = null;
     for (const m of (fast ? AI_FAST : AI_SMART)){
       try {
         const gc = {responseMimeType: "application/json", temperature: 0.1};
         if (/2\.5-flash$/.test(m)) gc.thinkingConfig = {thinkingBudget: 0};
-        const model = getGenerativeModel(ai, {model: m, generationConfig: gc});
+        const model = getGenerativeModel(ai, {model: m, generationConfig: gc}, {timeout: 40000});
         const res = await model.generateContent(parts);
+        mark(m + " ok");
         let t = res.response.text().trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+        aiShow("AI: " + lap.join(" · ") + " (tocca per chiudere)");
         return JSON.parse(t);
-      } catch(e){ lastErr = e; if (!/not found|404|no longer|deprecat|unsupported|thinking/i.test(String(e && e.message))) break; }
+      } catch(e){ mark(m + " errore"); lastErr = e; if (!/not found|404|no longer|deprecat|unsupported|thinking/i.test(String(e && e.message))) break; }
     }
+    aiShow("AI: " + lap.join(" · ") + " (tocca per chiudere)");
     throw lastErr || new Error("ai");
   }
 };
@@ -462,7 +471,7 @@ async function shrink(file){
 }
 
 const cond = {tt:"", ct:"", cp:""};
-function resetCond(){ for (const k in cond) cond[k] = ""; document.querySelectorAll(".cq[data-c]").forEach(q => q.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", "false"))); }
+function resetCond(){ for (const k in cond) cond[k] = "C"; document.querySelectorAll(".cq[data-c]").forEach(q => q.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === "C"))); }
 document.querySelectorAll("#form .cq").forEach(q => q.querySelectorAll("button").forEach(b => { b.onclick = () => { cond[q.dataset.c] = b.dataset.v; q.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); }; }));
 const CLAB = {tt:"temperatura del mezzo di trasporto", ct:"condizioni del mezzo di trasporto", cp:"condizioni del prodotto"};
 function lastForn(){ const e = entries.slice().sort((a, b) => b.t - a.t).find(x => (x.fornitore || "").trim()); return e ? e.fornitore.trim() : ""; }
