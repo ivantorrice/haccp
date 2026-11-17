@@ -51,7 +51,7 @@ body{background:#EDE2D0;color:#3b3225}
 .al p{font:500 14px/1.5 Montserrat,Arial,sans-serif;color:#5b4f3e;margin:10px 0}
 .al li{font:500 16px/1.4 Montserrat,Arial,sans-serif;color:#3b3225;padding:8px 0;border-bottom:1px solid rgba(130,117,96,.35);list-style:none;display:flex;gap:12px}
 .al li b{flex:0 0 28px;color:#827560}.al ul{margin:0;padding:0}
-.dt{display:inline-block;width:22px;height:22px;margin-left:8px;vertical-align:-4px;color:#827560}.dt svg{width:100%;height:100%;display:block}.leg{display:flex;flex-direction:column;gap:8px;margin:6px 0 10px;font:500 15px Montserrat,Arial,sans-serif;color:#3b3225}.leg span{display:flex;align-items:center;gap:10px}.leg .dt{margin:0}
+.dt{display:inline-block;width:22px;height:22px;margin-left:8px;vertical-align:-4px;color:#827560}.dt svg{width:100%;height:100%;display:block}.leg{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;margin:22px 0 4px;font:600 14px Montserrat,Arial,sans-serif;color:#3b3225}.leg span{display:flex;align-items:center;gap:10px}.leg .dt{margin:0}
 .mh .an{display:block;margin-top:8px;font:600 13px Montserrat,Arial,sans-serif;color:#827560}
 .mf{text-align:center;font:600 12px Montserrat,Arial,sans-serif;color:#827560;margin:40px 0 0}
 </style>
@@ -131,10 +131,10 @@ function show(carta){
   });
   const ALL = ["Cereali contenenti glutine","Crostacei","Uova","Pesce","Arachidi","Soia","Latte","Frutta a guscio","Sedano","Senape","Sesamo","Anidride solforosa e solfiti","Lupini","Molluschi"];
   const al = E("section", {cls: "al ms", id: "allergeni"}); al.append(E("h2", {text: "Allergeni"}), E("p", {text: "I numeri accanto ai piatti indicano gli allergeni presenti. Per intolleranze o allergie chiedi pure al nostro personale."}));
-  const lg = E("div", {cls: "leg"}); DT.forEach(x => lg.append(E("span", {}, dtEl(x[0]), document.createTextNode(x[2])))); al.append(E("p", {text: "Piatti adatti a una dieta particolare:"}), lg);
   const ul = E("ul"); ALL.forEach((t, i) => ul.append(E("li", {}, E("b", {text: String(i + 1)}), document.createTextNode(t)))); al.append(ul);
   main.append(al); nav.append(E("a", {href: "#allergeni", text: "Allergeni"}));
   if (nav.children.length > 1) box.append(nav);
+  const lg = E("div", {cls: "leg"}); DT.forEach(x => lg.append(E("span", {}, dtEl(x[0]), document.createTextNode(x[2])))); main.prepend(lg);
   box.append(main, E("div", {cls: "mf", text: "Vittoria 1926 Osteria Contemporanea"}));
   document.getElementById("msg").hidden = true;
 }
