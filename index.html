@@ -74,6 +74,7 @@ const aiSample = {
 const TDEV = [["z1","Freezer 1"],["z2","Freezer 2"],["v1","Vetrina refrigerata bar/deposito"],["b1","Banco refrigerato bar"],["v2","Vetrina refrigerata sala"]];
 const SYNC_KEYS = ["haccp-trac-v1","haccp-temp-v1","haccp-abb-v1","haccp-pul-v1","haccp-nc-v1","haccp-mag-v1","haccp-magp-v1","haccp-fc-v1","haccp-ric-v1","haccp-chk-v1","haccp-mprez-v1","haccp-forn-v1","haccp-prep-v1","haccp-scad-v1","haccp-closed-v1","haccp-closedx-v1","haccp-openx-v1","haccp-bkp-v1","haccp-carta-v1"];
 const rawSet = Storage.prototype.setItem;
+try { const o = localStorage.getItem("haccp-op"); if (o && o.charAt(0) !== '"') localStorage.setItem("haccp-op", JSON.stringify(o)); } catch(e){}
 const lsGet = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
 const tsMap = () => { try { return JSON.parse(lsGet("haccp-sync-ts") || "{}"); } catch(e){ return {}; } };
 const tsSet = (k, t) => { const m = tsMap(); m[k] = t; try { rawSet.call(localStorage, "haccp-sync-ts", JSON.stringify(m)); } catch(e){} };
@@ -150,12 +151,12 @@ async function notifOn(){
   const token = await M.getToken(M.getMessaging(app), {vapidKey: VAPID_KEY, serviceWorkerRegistration: reg});
   if (!token) throw new Error("Nessun codice ricevuto, riprova");
   const m = cloud.m;
-  await m.setDoc(m.doc(cloud.col.firestore, "kitchens", code, "devices", cloud.dev), {token, by: lsGet("haccp-op") || "", ts: Date.now()});
+  await m.setDoc(m.doc(cloud.col.firestore, "kitchens", code, "devices", cloud.dev), {token, by: (() => { try { return JSON.parse(lsGet("haccp-op")) || ""; } catch(e){ return ""; } })(), ts: Date.now()});
   rawSet.call(localStorage, "haccp-notif-on", "1");
 }
 window.cloudApi = {
   start: cloudStart, notifOn,
-  connect: (code, name) => { rawSet.call(localStorage, "haccp-sync-code", code.trim()); if (name && name.trim()) rawSet.call(localStorage, "haccp-op", name.trim()); sessionStorage.removeItem("haccp-sync-rl"); location.reload(); },
+  connect: (code, name) => { rawSet.call(localStorage, "haccp-sync-code", code.trim()); if (name && name.trim()) rawSet.call(localStorage, "haccp-op", JSON.stringify(name.trim())); try { sessionStorage.setItem("haccp-back", "e"); } catch(e){} sessionStorage.removeItem("haccp-sync-rl"); location.reload(); },
   disconnect: () => { try { localStorage.removeItem("haccp-sync-code"); } catch(e){} location.reload(); },
   wipe: () => { try { Object.keys(localStorage).filter(k => k.startsWith("haccp-") && !["haccp-op", "haccp-sync-code", "haccp-dev-id"].includes(k)).forEach(k => localStorage.removeItem(k)); } catch(e){} location.reload(); }
 };
@@ -2536,7 +2537,7 @@ window.menuApi = {render: () => { fillProdList(); renderMenu(); }};
 })();
 
 
-show("t");
+show((() => { try { const b = sessionStorage.getItem("haccp-back"); if (b){ sessionStorage.removeItem("haccp-back"); return b; } } catch(e){} return "t"; })());
 </script>
 </body>
 </html>
