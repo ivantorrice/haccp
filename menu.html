@@ -33,7 +33,6 @@ html,body{margin:0;background:#D9CDB8;font-family:Montserrat,"Segoe UI",Arial,sa
 </style>
 </head>
 <body>
-<div id="top"><button type="button" id="pdf">Salva / stampa PDF</button></div>
 <div id="msg">Sto caricando il menù…</div>
 <div id="pages"></div>
 <script>
@@ -93,7 +92,6 @@ try { const c = JSON.parse(localStorage.getItem(CACHE) || "null"); if (Array.isA
     show(carta);
   } catch(e){ if (!document.getElementById("pages").childNodes.length){ document.getElementById("msg").textContent = "Non riesco a caricare il menù. Controlla la connessione e riprova."; } }
 })();
-document.getElementById("pdf").onclick = async () => { try { await document.fonts.ready; } catch(e){} window.print(); };
 </script>
 </body>
 </html>
