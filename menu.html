@@ -35,11 +35,11 @@ body{background:#EDE2D0;color:#3b3225}
 #pages{padding:0 0 40px}
 .mh{text-align:center;padding:22px 16px 10px}.mh img{width:200px;max-width:60%;height:auto}
 .nav{position:sticky;top:0;z-index:5;background:#EDE2D0;display:flex;gap:8px;overflow-x:auto;padding:10px 12px;box-shadow:0 1px 6px rgba(0,0,0,.15);-webkit-overflow-scrolling:touch}
-.nav a{flex:0 0 auto;font:700 14px Montserrat,Arial,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:#827560;padding:10px 14px;border-radius:999px;text-decoration:none;white-space:nowrap}
+.nav a{display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;font:700 14px Montserrat,Arial,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:#827560;padding:10px 14px;border-radius:999px;text-decoration:none;white-space:nowrap}
 .mm{max-width:640px;margin:0 auto;padding:0 18px}
 .mg{font:700 13px Montserrat,Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#827560;margin:34px 0 -10px}
 .ms{scroll-margin-top:64px;margin-top:30px}
-.ms h2{font:700 24px Montserrat,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#827560;margin:0 0 6px;padding-bottom:8px;border-bottom:2px solid #827560}
+.ms h2 .ci,.nav .ci{display:inline-flex;flex:none}.nav .ci svg{width:18px;height:18px}.ms h2 .ci svg{width:26px;height:26px}.ms h2{display:flex;align-items:center;gap:10px;font:700 24px Montserrat,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#827560;margin:0 0 6px;padding-bottom:8px;border-bottom:2px solid #827560}
 .mi{display:flex;gap:14px;justify-content:space-between;align-items:flex-start;padding:14px 0;border-bottom:1px solid rgba(130,117,96,.35)}
 .mi .l{flex:1;min-width:0}.mi .n{font:700 18px/1.3 Montserrat,Arial,sans-serif;color:#3b3225}
 .mi .n sup{font-size:11px;font-weight:600;color:#827560;margin-left:3px}
@@ -100,6 +100,25 @@ const CACHE = "menu-pubblico-v1";
 const DT = [["sg", "SG", "Senza glutine (celiaci)"], ["v", "V", "Vegetariano"], ["vg", "VG", "Vegano"]];
 const DTI = {"sg": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 22V8\"/><path d=\"M12 2C13.400 3.500 13.400 6 12 7.500C10.600 6 10.600 3.500 12 2z\"/><path d=\"M12 13C9.500 13 7.500 11 7.500 8.5C10 8.5 12 10.5 12 13z\"/><path d=\"M12 13C14.500 13 16.500 11 16.500 8.5C14 8.5 12 10.5 12 13z\"/><path d=\"M12 18.5C9.500 18.5 7.500 16.5 7.500 14.0C10 14.0 12 16.0 12 18.5z\"/><path d=\"M12 18.5C14.500 18.5 16.500 16.5 16.500 14.0C14 14.0 12 16.0 12 18.5z\"/><path d=\"M3 3l18 18\" stroke-width=\"2.200\"/></svg>", "v": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4.500 19.500C4.500 10.500 9.500 5 20 4c-1 10-6 15.500-15.500 15.500z\"/><path d=\"M4.500 19.500L14 10\"/></svg>", "vg": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 21.500V11\"/><path d=\"M12 15C12 11 9 8.500 4.500 8.500 4.500 12.500 7.500 15 12 15z\"/><path d=\"M12 11.500C12 7.500 15 5 19.500 5c0 4-3 6.500-7.500 6.500z\"/></svg>"};
 const dtEl = k => { const s = E("span", {cls: "dt", role: "img", "aria-label": DT.find(x => x[0] === k)[2]}); s.innerHTML = DTI[k]; return s; };
+const SI = [
+  [/allerg/, '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/>'],
+  [/giro|aperit/, '<path d="M3 4h18l-9 10z"/><path d="M12 14v7M8 21h8"/>'],
+  [/antipast/, '<circle cx="9" cy="15" r="5"/><path d="M13 11l8-8"/><circle cx="9" cy="15" r="1.5"/>'],
+  [/^\s*prim/, '<path d="M3 12h18a9 9 0 0 1-18 0z"/><path d="M8 8c0-2 2-2 2-4M13 8c0-2 2-2 2-4"/>'],
+  [/second/, '<path d="M3 13c0-5 5-9 11-8 5 1 7 5 6 9s-6 6-11 5-6-2-6-6z"/><circle cx="14" cy="11" r="2"/>'],
+  [/contorn/, '<path d="M12 21c-5 0-8-4-8-8 5 0 8 3 8 8z"/><path d="M12 21c0-5 3-8 8-8 0 4-3 8-8 8z"/><path d="M12 13V4"/>'],
+  [/dolc|dessert/, '<path d="M3 20h18M5 20v-7h14v7M5 13c0-3 3-4 7-4s7 1 7 4"/><path d="M12 9V5"/>'],
+  [/bollic|spum|champ/, '<path d="M9 3h6l-1 10a2 2 0 0 1-4 0z"/><path d="M12 15v6M9 21h6"/>'],
+  [/birr/, '<path d="M5 7h11v13H5z"/><path d="M16 10h3a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-3M5 7c0-2.500 3-2.500 3 0 0-2.500 4-2.500 4 0 0-2.500 4-2.500 4 0"/>'],
+  [/cocktail|giro|aperit/, '<path d="M3 4h18l-9 10z"/><path d="M12 14v7M8 21h8"/>'],
+  [/gin|distill|amar/, '<path d="M10 2h4v4l2 3v12H8V9l2-3z"/><path d="M8 14h8"/>'],
+  [/vin|rossi|bianc|rosat/, '<path d="M7 3h10v6a5 5 0 0 1-10 0z"/><path d="M12 14v7M8 21h8"/>'],
+  [/caff|bevand/, '<path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 9h2a2 2 0 0 1 0 4h-2"/>']
+];
+function secIcon(name){
+  const t = String(name || "").toLowerCase(), m = SI.find(x => x[0].test(t)); if (!m) return null;
+  const sp = E("span", {cls: "ci", "aria-hidden": "true"}); sp.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + m[1] + '</svg>'; return sp;
+}
 function show(carta){
   const box = document.getElementById("pages"); box.textContent = "";
   const head = E("div", {cls: "mh"}); head.append(E("img", {src: LOGO, alt: "Vittoria 1926 Osteria Contemporanea"}), E("a", {cls: "an", href: "#allergeni", text: "Elenco degli allergeni"})); box.append(head);
@@ -116,10 +135,10 @@ function show(carta){
   const nav = E("div", {cls: "nav"}), main = E("div", {cls: "mm"});
   let lastG = null;
   secs.forEach((s, k) => {
-    const id = "s" + k; if (s.t) nav.append(E("a", {href: "#" + id, text: s.t}));
+    const id = "s" + k; if (s.t){ const a = E("a", {href: "#" + id}); const ic = secIcon(s.t); if (ic) a.append(ic); a.append(document.createTextNode(s.t)); nav.append(a); }
     if (s.g && s.g !== lastG && s.g !== s.t) main.append(E("div", {cls: "mg", text: s.g}));
     lastG = s.g;
-    const sec = E("section", {cls: "ms", id}); if (s.t) sec.append(E("h2", {text: s.t}));
+    const sec = E("section", {cls: "ms", id}); if (s.t){ const h = E("h2"); const ic = secIcon(s.t); if (ic) h.append(ic); h.append(document.createTextNode(s.t)); sec.append(h); }
     if (s.testo) sec.append(E("div", {cls: "mt", text: s.testo}));
     if (s.motto) sec.append(E("div", {cls: "mq", text: s.motto.split(/\s+/).join("\n")}));
     s.voci.forEach(v => {
@@ -130,9 +149,9 @@ function show(carta){
     main.append(sec);
   });
   const ALL = ["Cereali contenenti glutine","Crostacei","Uova","Pesce","Arachidi","Soia","Latte","Frutta a guscio","Sedano","Senape","Sesamo","Anidride solforosa e solfiti","Lupini","Molluschi"];
-  const al = E("section", {cls: "al ms", id: "allergeni"}); al.append(E("h2", {text: "Allergeni"}), E("p", {text: "I numeri accanto ai piatti indicano gli allergeni presenti. Per intolleranze o allergie chiedi pure al nostro personale."}));
+  const al = E("section", {cls: "al ms", id: "allergeni"}); { const h = E("h2"); h.append(secIcon("allergeni"), document.createTextNode("Allergeni")); al.append(h); } al.append( E("p", {text: "I numeri accanto ai piatti indicano gli allergeni presenti. Per intolleranze o allergie chiedi pure al nostro personale."}));
   const ul = E("ul"); ALL.forEach((t, i) => ul.append(E("li", {}, E("b", {text: String(i + 1)}), document.createTextNode(t)))); al.append(ul);
-  main.append(al); nav.append(E("a", {href: "#allergeni", text: "Allergeni"}));
+  main.append(al); { const a = E("a", {href: "#allergeni"}); a.append(secIcon("allergeni"), document.createTextNode("Allergeni")); nav.append(a); }
   if (nav.children.length > 1) box.append(nav);
   const lg = E("div", {cls: "leg"}); DT.forEach(x => lg.append(E("span", {}, dtEl(x[0]), document.createTextNode(x[2])))); main.prepend(lg);
   box.append(main, E("div", {cls: "mf", text: "Vittoria 1926 Osteria Contemporanea"}));
