@@ -10,8 +10,8 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script>
 const FB_CFG = {apiKey:"AIzaSyDgR7_yy8vwORgM1aJcDNU9tkyGfvSDsEk",authDomain:"vittoria-haccp.firebaseapp.com",projectId:"vittoria-haccp",storageBucket:"vittoria-haccp.firebasestorage.app",messagingSenderId:"122368607372",appId:"1:122368607372:web:3b4b70f515ee5eae9367a9"};
-const AI_FAST = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-flash-latest"];
-const AI_SMART = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"];
+const AI_FAST = [{m:"gemini-2.5-flash-lite"}, {m:"gemini-2.5-flash", tc:0}, {m:"gemini-2.5-flash"}];
+const AI_SMART = [{m:"gemini-2.5-flash", tc:0}, {m:"gemini-2.5-flash"}, {m:"gemini-2.0-flash"}];
 async function shrinkImg(blob, max){
   try {
     const bmp = await createImageBitmap(blob);
@@ -37,7 +37,7 @@ function aiInit(){
 }
 const b64 = blob => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.onerror = ko; r.readAsDataURL(blob); });
 function aiShow(t){
-  try { let d = document.getElementById("aiT"); if (!d){ d = document.createElement("div"); d.id = "aiT"; d.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:99;background:#222;color:#fff;font:12px/1.4 monospace;padding:6px 10px;border-radius:8px;opacity:.92"; d.onclick = () => d.remove(); document.body.appendChild(d); } d.textContent = t; } catch(e){}
+  try { let d = document.getElementById("aiT"); if (!d){ d = document.createElement("div"); d.id = "aiT"; d.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:99;background:#222;color:#fff;font:11px/1.4 monospace;white-space:pre-wrap;padding:6px 10px;border-radius:8px;opacity:.92"; d.onclick = () => d.remove(); document.body.appendChild(d); } d.textContent = t; } catch(e){}
 }
 const aiSample = {
   limits: async () => ({images: true}),
@@ -49,20 +49,21 @@ const aiSample = {
     const parts = [prompt + "\n\nRispondi SOLO con JSON valido, senza testo prima o dopo."];
     for (const im of ((opts && opts.images) || [])){ const sm = await shrinkImg(im, fast ? 1280 : 1800); parts.push({inlineData: {mimeType: sm.type || "image/jpeg", data: await b64(sm)}}); }
     mark("foto");
-    let lastErr = null;
-    for (const m of (fast ? AI_FAST : AI_SMART)){
+    let lastErr = null; const errs = [];
+    for (const at of (fast ? AI_FAST : AI_SMART)){
+      const m = at.m + (at.tc === 0 ? "+nothink" : "");
       try {
         const gc = {responseMimeType: "application/json", temperature: 0.1};
-        if (/2\.5-flash$/.test(m)) gc.thinkingConfig = {thinkingBudget: 0};
-        const model = getGenerativeModel(ai, {model: m, generationConfig: gc}, {timeout: 40000});
+        if (at.tc === 0) gc.thinkingConfig = {thinkingBudget: 0};
+        const model = getGenerativeModel(ai, {model: at.m, generationConfig: gc}, {timeout: 25000});
         const res = await model.generateContent(parts);
         mark(m + " ok");
         let t = res.response.text().trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
-        aiShow("AI: " + lap.join(" · ") + " (tocca per chiudere)");
+        aiShow("AI: " + lap.join(" · ") + (errs.length ? "\n" + errs.join("\n") : "") + "\n(tocca per chiudere)");
         return JSON.parse(t);
-      } catch(e){ mark(m + " errore"); lastErr = e; if (!/not found|404|no longer|deprecat|unsupported|thinking/i.test(String(e && e.message))) break; }
+      } catch(e){ mark(m + " errore"); errs.push(m + ": " + String(e && e.message).replace(/https?:\/\/\S+/g, "").slice(-110)); lastErr = e; }
     }
-    aiShow("AI: " + lap.join(" · ") + " (tocca per chiudere)");
+    aiShow("AI: " + lap.join(" · ") + "\n" + errs.join("\n") + "\n(tocca per chiudere)");
     throw lastErr || new Error("ai");
   }
 };
