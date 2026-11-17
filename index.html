@@ -555,6 +555,19 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <h2 style="margin-top:28px">Backup del mese</h2>
 <p class="sub">Scarica in un solo PDF tutti i registri del mese scelto qui sopra. Conservalo come copia di sicurezza.</p>
 <button type="button" class="p" id="bkBtn" style="width:100%">Backup: tutti i registri in un PDF</button>
+<h2 style="margin-top:28px">Backup HACCP (non modificabile)</h2>
+<p class="sub">Registri obbligatori: merce in arrivo e lotti, schede fornitori complete, temperature, abbattimento, pulizie, non conformità, controlli. Il file ha un'impronta di controllo: se qualcuno lo modifica, l'app lo riconosce e rifiuta il ripristino.</p>
+<button type="button" class="p" id="xhSave" style="width:100%;margin-bottom:8px">Salva backup HACCP</button>
+<button type="button" class="p" id="xhLoad" style="width:100%">Ripristina HACCP</button>
+<input type="file" id="xhFile" accept=".json,application/json" hidden>
+<h2 style="margin-top:28px">Backup gestione (Excel)</h2>
+<p class="sub">Prenotazioni, rubrica clienti, magazzino, prezzi, food cost, Menu cucina e Carta in un solo Excel, leggibile anche dal computer per le statistiche. Serve anche per ripristinare.</p>
+<button type="button" class="p" id="xbSave" style="width:100%;margin-bottom:8px">Salva backup gestione (Excel)</button>
+<button type="button" class="p" id="xbLoad" style="width:100%">Ripristina gestione</button>
+<input type="file" id="xbFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+<p class="meta" id="xbLast"></p>
+<p id="xbSt" role="status"></p>
+<div id="xbPanel" hidden style="border:1px solid var(--line);border-radius:12px;background:var(--card);padding:12px;margin-top:8px"></div>
 <h2 style="margin-top:28px">Cloud e firma</h2>
 <p class="sub">Con il cloud i registri non si perdono se cambi telefono. Stesso codice sui telefoni della cucina = stessi dati. Il nome qui sotto è la firma sui registri.</p>
 <label class="f">Nome e cognome (firma)<input id="cdName" type="text" autocomplete="name"></label>
@@ -2987,5 +3000,217 @@ setInterval(barUpd, 60000); document.addEventListener("visibilitychange", () => 
 barUpd(); checkNew();
 })();
 </script>
+<script>
+(function(){
+"use strict";
+const $ = id => document.getElementById(id);
+const HK = ["haccp-trac-v1","haccp-forn-v1","haccp-temp-v1","haccp-abb-v1","haccp-pul-v1","haccp-nc-v1","haccp-chk-v1","haccp-scad-v1","haccp-prep-v1","haccp-closed-v1","haccp-closedx-v1","haccp-openx-v1","haccp-bkp-v1"];
+const XK = ["haccp-mag-v1","haccp-magp-v1","haccp-fc-v1","haccp-ric-v1","haccp-mprez-v1","haccp-carta-v1","haccp-pren-v1","haccp-rub-v1","haccp-prenlim-v1"];
+const KEYS = HK.concat(XK);
+const HN = {"haccp-trac-v1": "Merce in arrivo (lotti)", "haccp-forn-v1": "Fornitori (schede complete)", "haccp-temp-v1": "Temperature", "haccp-abb-v1": "Abbattimento", "haccp-pul-v1": "Pulizie", "haccp-nc-v1": "Non conformità", "haccp-chk-v1": "Controlli", "haccp-scad-v1": "Scadenze", "haccp-prep-v1": "Preparazioni", "haccp-closed-v1": "Giorni di chiusura", "haccp-closedx-v1": "Chiusure straordinarie", "haccp-openx-v1": "Aperture straordinarie", "haccp-bkp-v1": "Backup mensili PDF"};
+const MERGE = ["haccp-pren-v1", "haccp-rub-v1"];
+const SHEETS = {"haccp-pren-v1": "Prenotazioni", "haccp-rub-v1": "Rubrica clienti", "haccp-trac-v1": "Merce in arrivo", "haccp-temp-v1": "Temperature", "haccp-abb-v1": "Abbattimento", "haccp-pul-v1": "Pulizie", "haccp-nc-v1": "Non conformita", "haccp-mag-v1": "Magazzino", "haccp-magp-v1": "Magazzino prodotti", "haccp-fc-v1": "Food cost", "haccp-ric-v1": "Menu cucina", "haccp-chk-v1": "Controlli", "haccp-mprez-v1": "Prezzi", "haccp-forn-v1": "Fornitori", "haccp-prep-v1": "Preparazioni", "haccp-scad-v1": "Scadenze", "haccp-carta-v1": "Carta"};
+const LAB = {t: "Data e ora", data: "Data", prodotto: "Prodotto", fornitore: "Fornitore", lotto: "Lotto", scadenza: "Scadenza", op: "Operatore", firma: "Firma", dev: "Apparecchio", v: "Valore", note: "Note", conf: "Conforme", temp: "Temperatura", tf: "Temp. finale", dur: "Durata", tipo: "Tipo", rep: "Reparto", task: "Compito", desc: "Descrizione", ris: "Risoluzione", chiusura: "Chiusura", nome: "Nome", out: "Fuori limite", late: "In ritardo", fase: "Fase"};
+const LABP = {d: "Data", t: "Ora", n: "Nome", p: "Persone", tel: "Telefono", nota: "Nota", note: "Note", st: "Stato", fn: "Nota fissa", dt: "Ultimo cambio", cr: "Creata il"};
+const LABR = {n: "Nome", tel: "Telefono", fn: "Nota fissa", nota: "Nota", note: "Note"};
+const HIDE = {"haccp-pren-v1": ["id", "u", "x"], "haccp-rub-v1": ["id", "u", "x"]};
+const pad = n => String(n).padStart(2, "0");
+const rd = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
+const esc = s => String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const enc = new TextEncoder(), dec = new TextDecoder();
+const st = (m, bad) => { const e = $("xbSt"); if (e){ e.textContent = m; e.className = bad ? "s bad" : "s ok"; } };
+
+// ---- CRC32 + ZIP (senza compressione)
+const CT = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++){ let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CT[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+function zip(files){
+  const parts = [], cen = []; let off = 0;
+  files.forEach(f => {
+    const nm = enc.encode(f.name), data = enc.encode(f.text), c = crc(data);
+    const h = new DataView(new ArrayBuffer(30)); h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true); h.setUint32(14, c, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, nm.length, true);
+    parts.push(new Uint8Array(h.buffer), nm, data);
+    const g = new DataView(new ArrayBuffer(46)); g.setUint32(0, 0x02014b50, true); g.setUint16(4, 20, true); g.setUint16(6, 20, true); g.setUint16(8, 0x0800, true); g.setUint32(16, c, true); g.setUint32(20, data.length, true); g.setUint32(24, data.length, true); g.setUint16(28, nm.length, true); g.setUint32(42, off, true);
+    cen.push(new Uint8Array(g.buffer), nm); off += 30 + nm.length + data.length;
+  });
+  const cl = cen.reduce((a, x) => a + x.length, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cl, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...cen, new Uint8Array(e.buffer)], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+}
+async function unzip(buf){
+  const u = new Uint8Array(buf), v = new DataView(buf); let e = -1;
+  for (let i = u.length - 22; i >= Math.max(0, u.length - 70000); i--) if (v.getUint32(i, true) === 0x06054b50){ e = i; break; }
+  if (e < 0) throw new Error("Non è un file Excel valido");
+  const n = v.getUint16(e + 10, true); let p = v.getUint32(e + 16, true); const out = {};
+  for (let i = 0; i < n; i++){
+    if (v.getUint32(p, true) !== 0x02014b50) throw new Error("File danneggiato");
+    const meth = v.getUint16(p + 10, true), cs = v.getUint32(p + 20, true), nl = v.getUint16(p + 28, true), el = v.getUint16(p + 30, true), cm = v.getUint16(p + 32, true), lo = v.getUint32(p + 42, true);
+    const name = dec.decode(u.subarray(p + 46, p + 46 + nl)); p += 46 + nl + el + cm;
+    if (!/^(xl\/workbook\.xml|xl\/_rels\/workbook\.xml\.rels|xl\/sharedStrings\.xml|xl\/worksheets\/[^/]+\.xml)$/.test(name)) continue;
+    const ds = lo + 30 + v.getUint16(lo + 26, true) + v.getUint16(lo + 28, true), raw = u.subarray(ds, ds + cs);
+    if (meth === 0) out[name] = dec.decode(raw);
+    else if (meth === 8){ if (typeof DecompressionStream === "undefined") throw new Error("Questo browser non legge il file: usa Chrome aggiornato"); out[name] = await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text(); }
+  }
+  return out;
+}
+
+// ---- XLSX
+const colL = i => { let s = ""; i++; while (i > 0){ const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
+function sheetXml(rows){
+  const w = []; rows.forEach(r => r.forEach((c, i) => { const l = Math.min(50, String(c == null ? "" : c).length); w[i] = Math.max(w[i] || 8, l + 2); }));
+  let x = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>';
+  if (w.length) x += "<cols>" + w.map((q, i) => '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + q + '" customWidth="1"/>').join("") + "</cols>";
+  x += "<sheetData>";
+  rows.forEach((r, ri) => {
+    x += '<row r="' + (ri + 1) + '">';
+    r.forEach((c, ci) => { if (c === "" || c == null) return; const ref = colL(ci) + (ri + 1), s = ri === 0 ? ' s="1"' : ""; x += typeof c === "number" && isFinite(c) ? '<c r="' + ref + '"' + s + "><v>" + c + "</v></c>" : '<c r="' + ref + '"' + s + ' t="inlineStr"><is><t xml:space="preserve">' + esc(c) + "</t></is></c>"; });
+    x += "</row>";
+  });
+  return x + "</sheetData></worksheet>";
+}
+function build(sheets){
+  const f = [];
+  f.push({name: "[Content_Types].xml", text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' + sheets.map((s, i) => '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join("") + "</Types>"});
+  f.push({name: "_rels/.rels", text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'});
+  f.push({name: "xl/workbook.xml", text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView activeTab="0"/></bookViews><sheets>' + sheets.map((s, i) => '<sheet name="' + esc(s.name) + '" sheetId="' + (i + 1) + '"' + (s.hidden ? ' state="hidden"' : "") + ' r:id="rId' + (i + 1) + '"/>').join("") + "</sheets></workbook>"});
+  f.push({name: "xl/_rels/workbook.xml.rels", text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + sheets.map((s, i) => '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>').join("") + '<Relationship Id="rId' + (sheets.length + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'});
+  f.push({name: "xl/styles.xml", text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD2C7B1"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'});
+  sheets.forEach((s, i) => f.push({name: "xl/worksheets/sheet" + (i + 1) + ".xml", text: sheetXml(s.rows)}));
+  return zip(f);
+}
+
+// ---- dati leggibili
+const fmt = (k, v) => {
+  if (v == null) return "";
+  if (typeof v === "boolean") return v ? "Sì" : "No";
+  if (typeof v === "number"){ if ((k === "t" || k === "dt" || k === "cr") && v > 1e11 && v < 4e12){ const d = new Date(v); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()); } return v; }
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+};
+function table(key, val){
+  const hide = HIDE[key] || [], lab = key === "haccp-pren-v1" ? Object.assign({}, LAB, LABP) : key === "haccp-rub-v1" ? Object.assign({}, LAB, LABR) : LAB;
+  if (key === "haccp-carta-v1" && Array.isArray(val)){
+    const rows = [["Pagina", "Sezione", "Voce", "Descrizione", "Allergeni", "Prezzo"]];
+    val.forEach(p => (p.sezioni || []).forEach(s => (s.voci || []).forEach(v => rows.push([p.titolo || "", s.nome || "", v.n || "", v.d || "", v.a || "", v.p || ""]))));
+    return rows;
+  }
+  if (Array.isArray(val)){
+    const items = val.filter(x => x && !x.x), cols = [];
+    items.forEach(x => { if (typeof x !== "object") return; Object.keys(x).forEach(c => { if (!hide.includes(c) && !cols.includes(c)) cols.push(c); }); });
+    if (!cols.length) return [["Valore"]].concat(items.map(x => [fmt("", x)]));
+    if (key === "haccp-pren-v1") cols.sort((a, b) => (a === "d" ? -2 : a === "t" ? -1 : 0) - (b === "d" ? -2 : b === "t" ? -1 : 0));
+    return [cols.map(c => lab[c] || c)].concat(items.map(x => cols.map(c => fmt(c, x[c]))));
+  }
+  if (val && typeof val === "object") return [["Voce", "Valore"]].concat(Object.keys(val).map(k => [k, fmt("", val[k])]));
+  return [["Valore"], [fmt("", val)]];
+}
+function snapshot(ks){ const d = {}; (ks || KEYS).forEach(k => { const v = rd(k); if (v !== null) d[k] = v; }); return d; }
+async function makeBackup(){
+  const data = snapshot(XK), now = new Date(), sheets = [], extra = [["Impostazione", "Valore"]];
+  XK.forEach(k => {
+    if (!(k in data)) return; let val; try { val = JSON.parse(data[k]); } catch(e){ return; }
+    if (SHEETS[k]) sheets.push({name: SHEETS[k], rows: table(k, val)}); else extra.push([k.replace(/^haccp-|-v1$/g, ""), fmt("", val)]);
+  });
+  if (extra.length > 1) sheets.push({name: "Impostazioni", rows: extra});
+  const json = JSON.stringify(data), chunks = []; for (let i = 0; i < json.length; i += 30000) chunks.push(json.slice(i, i + 30000));
+  const iso = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate());
+  sheets.push({name: "Ripristino", hidden: true, rows: [["VITTORIA-BACKUP", "2", iso + " " + pad(now.getHours()) + ":" + pad(now.getMinutes()), String(chunks.length), "gestione"]].concat(chunks.map(c => [c]))});
+  return {blob: build(sheets), name: "Vittoria-gestione-" + iso + ".xlsx", iso};
+}
+
+// ---- lettura per ripristino
+async function readBackup(file){
+  const z = await unzip(await file.arrayBuffer()), wb = z["xl/workbook.xml"], rl = z["xl/_rels/workbook.xml.rels"];
+  if (!wb || !rl) throw new Error("Non è un file di backup di Vittoria");
+  const P = new DOMParser(), W = P.parseFromString(wb, "application/xml"), R = P.parseFromString(rl, "application/xml");
+  const sh = [...W.getElementsByTagName("sheet")].find(s => s.getAttribute("name") === "Ripristino");
+  if (!sh) throw new Error("Questo file non contiene i dati di ripristino. Usa un file creato con «Salva backup».");
+  const rid = sh.getAttribute("r:id") || sh.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id");
+  const rel = [...R.getElementsByTagName("Relationship")].find(r => r.getAttribute("Id") === rid);
+  let tg = rel && rel.getAttribute("Target"); if (!tg) throw new Error("File danneggiato");
+  tg = tg.replace(/^\/?(xl\/)?/, "xl/");
+  const sx = z[tg]; if (!sx) throw new Error("File danneggiato");
+  const ss = []; if (z["xl/sharedStrings.xml"]) [...P.parseFromString(z["xl/sharedStrings.xml"], "application/xml").getElementsByTagName("si")].forEach(si => ss.push([...si.getElementsByTagName("t")].map(t => t.textContent).join("")));
+  const S = P.parseFromString(sx, "application/xml"), rows = [];
+  [...S.getElementsByTagName("row")].forEach(r => {
+    const c = [...r.getElementsByTagName("c")].find(x => /^A\d+$/.test(x.getAttribute("r") || "")); if (!c) return;
+    const cc = l => [...r.getElementsByTagName("c")].find(x => new RegExp("^" + l + "\\d+$").test(x.getAttribute("r") || ""));
+    const val = x => { const t = x.getAttribute("t"); if (t === "inlineStr") return [...x.getElementsByTagName("t")].map(q => q.textContent).join(""); const v = x.getElementsByTagName("v")[0]; if (!v) return ""; return t === "s" ? (ss[Number(v.textContent)] || "") : v.textContent; };
+    rows.push([val(c), cc("B") ? val(cc("B")) : "", cc("C") ? val(cc("C")) : ""]);
+  });
+  if (!rows.length || rows[0][0] !== "VITTORIA-BACKUP") throw new Error("Questo file non è un backup di Vittoria");
+  const json = rows.slice(1).map(r => r[0]).join("");
+  let data; try { data = JSON.parse(json); } catch(e){ throw new Error("I dati di ripristino sono rovinati"); }
+  return {data, ver: rows[0][1], when: (rows[0][2] || "")};
+}
+const count = v => { try { const x = JSON.parse(v); return Array.isArray(x) ? x.filter(i => i && !i.x).length : (x && typeof x === "object" ? Object.keys(x).length : 1); } catch(e){ return 0; } };
+const mergeById = (a, b) => { const m = new Map(); [...a, ...b].forEach(x => { if (!x || !x.id) return; const o = m.get(x.id); if (!o || (x.u || 0) > (o.u || 0)) m.set(x.id, x); }); return [...m.values()]; };
+
+function panel(info, grp){
+  const box = $("xbPanel"); box.textContent = ""; box.hidden = false;
+  const p = document.createElement("p"); p.style.cssText = "margin:0 0 8px;font-weight:700"; p.textContent = (grp === HK ? "Backup HACCP del " : "Backup gestione del ") + info.when + ". Contiene:"; box.append(p);
+  const ul = document.createElement("ul"); ul.style.cssText = "margin:0 0 10px;padding-left:20px";
+  Object.keys(info.data).forEach(k => { if (!grp.includes(k)) return; const li = document.createElement("li"); li.textContent = (HN[k] || SHEETS[k] || k.replace(/^haccp-|-v1$/g, "")) + ": " + count(info.data[k]); ul.append(li); });
+  box.append(ul);
+  const w = document.createElement("p"); w.className = "meta"; w.textContent = grp === HK ? "I dati HACCP di questo telefono vengono sostituiti da quelli del file. Prima di procedere l'app salva una copia dello stato attuale." : "Prenotazioni e rubrica vengono unite a quelle già presenti. Tutto il resto viene sostituito dal contenuto del backup. Prima di procedere l'app salva una copia dello stato attuale."; box.append(w);
+  const ok = document.createElement("button"); ok.type = "button"; ok.className = "p"; ok.style.cssText = "width:100%;margin-bottom:8px"; ok.textContent = "Conferma ripristino";
+  const no = document.createElement("button"); no.type = "button"; no.className = "p"; no.style.cssText = "width:100%"; no.textContent = "Annulla";
+  no.onclick = () => { box.hidden = true; box.textContent = ""; st("Ripristino annullato.", false); };
+  ok.onclick = () => {
+    try { localStorage.setItem("haccp-pre-restore-" + (grp === HK ? "h" : "x"), JSON.stringify({ts: Date.now(), data: snapshot(grp)})); } catch(e){}
+    try {
+      Object.keys(info.data).forEach(k => {
+        if (!grp.includes(k) || typeof info.data[k] !== "string") return;
+        if (MERGE.includes(k)){ let a = [], b = []; try { a = JSON.parse(rd(k) || "[]"); } catch(e){} try { b = JSON.parse(info.data[k]); } catch(e){} localStorage.setItem(k, JSON.stringify(mergeById(Array.isArray(a) ? a : [], Array.isArray(b) ? b : []))); }
+        else localStorage.setItem(k, info.data[k]);
+      });
+      st("Ripristino completato. Riavvio dell'app…", false);
+      setTimeout(() => location.reload(), 1500);
+    } catch(e){ st("Ripristino non riuscito: " + (e.message || e), true); }
+  };
+  box.append(ok, no);
+}
+const LK = "haccp-xbk-last", LH = "haccp-hbk-last";
+function lastTxt(){ const l = rd(LK), h = rd(LH); $("xbLast").textContent = (h ? "Ultimo backup HACCP: " + h : "Backup HACCP: non ancora salvato") + ". " + (l ? "Ultimo backup gestione: " + l : "Backup gestione: non ancora salvato") + "."; }
+function dl(blob, name){ const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); }
+const sha = async t => { if (!(window.crypto && crypto.subtle)) throw new Error("Questo browser non può calcolare l'impronta di controllo"); const h = await crypto.subtle.digest("SHA-256", enc.encode(t)); return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, "0")).join(""); };
+const canon = (data, created) => JSON.stringify(Object.keys(data).sort().map(k => [k, data[k]])) + "|" + created;
+async function makeHaccp(){
+  const now = new Date(), iso = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate()), created = iso + " " + pad(now.getHours()) + ":" + pad(now.getMinutes()), data = snapshot(HK);
+  const doc = {formato: "VITTORIA-HACCP", versione: 1, creato: created, impronta: await sha(canon(data, created)), dati: data};
+  return {blob: new Blob([JSON.stringify(doc)], {type: "application/json"}), name: "Vittoria-HACCP-" + iso + ".json", iso};
+}
+async function readHaccp(file){
+  let doc; try { doc = JSON.parse(await file.text()); } catch(e){ throw new Error("Questo file non è un backup HACCP di Vittoria"); }
+  if (!doc || doc.formato !== "VITTORIA-HACCP" || !doc.dati || typeof doc.dati !== "object") throw new Error("Questo file non è un backup HACCP di Vittoria");
+  if (await sha(canon(doc.dati, doc.creato)) !== doc.impronta) throw new Error("FILE MODIFICATO: l'impronta di controllo non corrisponde, il file è stato alterato dopo il salvataggio. Ripristino rifiutato.");
+  return {data: doc.dati, when: doc.creato};
+}
+$("xbSave").onclick = async () => {
+  st("Preparo il file…", false);
+  try { const r = await makeBackup(); dl(r.blob, r.name); try { localStorage.setItem(LK, r.iso); } catch(e){} lastTxt(); st("Backup gestione salvato: " + r.name, false); }
+  catch(e){ st("Backup non riuscito: " + (e.message || e), true); }
+};
+$("xhSave").onclick = async () => {
+  st("Preparo il file…", false);
+  try { const r = await makeHaccp(); dl(r.blob, r.name); try { localStorage.setItem(LH, r.iso); } catch(e){} lastTxt(); st("Backup HACCP salvato: " + r.name, false); }
+  catch(e){ st("Backup non riuscito: " + (e.message || e), true); }
+};
+$("xbLoad").onclick = () => $("xbFile").click();
+$("xhLoad").onclick = () => $("xhFile").click();
+$("xbFile").onchange = async ev => {
+  const f = ev.target.files[0]; ev.target.value = ""; if (!f) return;
+  st("Leggo il file…", false);
+  try { const info = await readBackup(f); if (!Object.keys(info.data).some(k => XK.includes(k)) || Object.keys(info.data).some(k => HK.includes(k))) throw new Error("Questo non è un backup di gestione. Per i dati HACCP usa «Ripristina HACCP»."); st("", false); panel(info, XK); } catch(e){ st(e.message || String(e), true); }
+};
+$("xhFile").onchange = async ev => {
+  const f = ev.target.files[0]; ev.target.value = ""; if (!f) return;
+  st("Controllo il file…", false);
+  try { const info = await readHaccp(f); st("", false); panel(info, HK); } catch(e){ st(e.message || String(e), true); $("xbPanel").hidden = true; }
+};
+window.xbkApi = {make: makeBackup, read: readBackup, haccp: makeHaccp, readH: readHaccp};
+lastTxt();
+})();
+</script>
+
 </body>
 </html>
