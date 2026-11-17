@@ -30,6 +30,24 @@ html,body{margin:0;background:#D9CDB8;font-family:Montserrat,"Segoe UI",Arial,sa
 .cp.tx .cs{text-align:center;margin-top:150px;margin-bottom:36px}
 
 @media print{#top,#msg{display:none!important}html,body{background:#fff}#pages{padding:0}.pw{margin:0;box-shadow:none;width:auto!important;height:auto!important;overflow:visible}.cp{zoom:1!important;break-after:page;page-break-after:always;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+
+body{background:#EDE2D0;color:#3b3225}
+#pages{padding:0 0 40px}
+.mh{text-align:center;padding:22px 16px 10px}.mh img{width:200px;max-width:60%;height:auto}
+.nav{position:sticky;top:0;z-index:5;background:#EDE2D0;display:flex;gap:8px;overflow-x:auto;padding:10px 12px;box-shadow:0 1px 6px rgba(0,0,0,.15);-webkit-overflow-scrolling:touch}
+.nav a{flex:0 0 auto;font:700 14px Montserrat,Arial,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:#827560;padding:10px 14px;border-radius:999px;text-decoration:none;white-space:nowrap}
+.mm{max-width:640px;margin:0 auto;padding:0 18px}
+.mg{font:700 13px Montserrat,Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#827560;margin:34px 0 -10px}
+.ms{scroll-margin-top:64px;margin-top:30px}
+.ms h2{font:700 24px Montserrat,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#827560;margin:0 0 6px;padding-bottom:8px;border-bottom:2px solid #827560}
+.mi{display:flex;gap:14px;justify-content:space-between;align-items:flex-start;padding:14px 0;border-bottom:1px solid rgba(130,117,96,.35)}
+.mi .l{flex:1;min-width:0}.mi .n{font:700 18px/1.3 Montserrat,Arial,sans-serif;color:#3b3225}
+.mi .n sup{font-size:11px;font-weight:600;color:#827560;margin-left:3px}
+.mi .d{font:500 15px/1.45 Montserrat,Arial,sans-serif;color:#5b4f3e;margin-top:4px;white-space:pre-line}
+.mi .p{font:700 18px Montserrat,Arial,sans-serif;color:#3b3225;white-space:nowrap;padding-left:4px}
+.mt{font:500 16px/1.6 Montserrat,Arial,sans-serif;color:#5b4f3e;white-space:pre-line;margin-top:24px}
+.mq{font:700 26px/1.3 Montserrat,Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#827560;text-align:center;white-space:pre-line;margin:22px 0}
+.mf{text-align:center;font:600 12px Montserrat,Arial,sans-serif;color:#827560;margin:40px 0 0}
 </style>
 </head>
 <body>
@@ -75,8 +93,34 @@ const LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgUAAAFKCAYAAACNeiwp
 const CACHE = "menu-pubblico-v1";
 function show(carta){
   const box = document.getElementById("pages"); box.textContent = "";
-  const z = Math.min(1, (document.documentElement.clientWidth - 16) / 794);
-  carta.forEach(p => { const w = E("div", {cls: "pw", style: "width:" + Math.round(794 * z) + "px;height:" + Math.round(1122 * z) + "px"}); const el = pageEl(p); el.style.zoom = z; w.append(el); box.append(w); });
+  const head = E("div", {cls: "mh"}); head.append(E("img", {src: LOGO, alt: "Vittoria 1926 Osteria Contemporanea"})); box.append(head);
+  // raggruppa: le sezioni senza titolo continuano la precedente
+  const secs = [];
+  carta.forEach(p => {
+    if (p.tipo === "cover") return;
+    if (p.tipo === "testo"){ secs.push({t: (p.sezioni && p.sezioni[0] && p.sezioni[0].nome) || p.titolo || "", testo: p.testo, motto: p.motto, voci: ((p.sezioni || [])[0] || {voci: []}).voci, g: ""}); return; }
+    (p.sezioni || []).forEach(s => {
+      if (!s.nome && secs.length && !secs[secs.length - 1].testo){ secs[secs.length - 1].voci = secs[secs.length - 1].voci.concat(s.voci || []); return; }
+      secs.push({t: s.nome || p.titolo || "", voci: (s.voci || []).slice(), g: p.titolo || ""});
+    });
+  });
+  const nav = E("div", {cls: "nav"}), main = E("div", {cls: "mm"});
+  let lastG = null;
+  secs.forEach((s, k) => {
+    const id = "s" + k; if (s.t) nav.append(E("a", {href: "#" + id, text: s.t}));
+    if (s.g && s.g !== lastG && s.g !== s.t) main.append(E("div", {cls: "mg", text: s.g}));
+    lastG = s.g;
+    const sec = E("section", {cls: "ms", id}); if (s.t) sec.append(E("h2", {text: s.t}));
+    if (s.testo) sec.append(E("div", {cls: "mt", text: s.testo}));
+    if (s.motto) sec.append(E("div", {cls: "mq", text: s.motto.split(/\s+/).join("\n")}));
+    s.voci.forEach(v => {
+      const n = E("div", {cls: "n"}, document.createTextNode(v.n || "")); if (v.a) n.append(E("sup", {text: v.a}));
+      sec.append(E("div", {cls: "mi"}, E("div", {cls: "l"}, n, v.d ? E("div", {cls: "d", text: v.d}) : null), E("div", {cls: "p", text: v.p || ""})));
+    });
+    main.append(sec);
+  });
+  if (nav.children.length > 1) box.append(nav);
+  box.append(main, E("div", {cls: "mf", text: "Vittoria 1926 Osteria Contemporanea"}));
   document.getElementById("msg").hidden = true;
 }
 try { const c = JSON.parse(localStorage.getItem(CACHE) || "null"); if (Array.isArray(c) && c.length) show(c); } catch(e){}
