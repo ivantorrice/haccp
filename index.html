@@ -24,7 +24,7 @@ async function shrinkImg(blob, max){
 }
 const FB_V = "12.0.0", FB_B = "https://www.gstatic.com/firebasejs/" + FB_V + "/";
 let fbAppP = null;
-const fbApp = () => fbAppP || (fbAppP = (async () => { const m = await import(FB_B + "firebase-app.js"); return m.getApps().length ? m.getApp() : m.initializeApp(FB_CFG); })());
+const fbApp = () => fbAppP || (fbAppP = (async () => { const m = await import(FB_B + "firebase-app.js"); return m.getApps().find(x => x.name === "[DEFAULT]") || m.initializeApp(FB_CFG); })());
 let aiP = null;
 function aiInit(){
   if (aiP) return aiP;
