@@ -72,7 +72,9 @@ const aiSample = {
 
 // ---- Cloud (Firestore) ----
 const TDEV = [["z1","Freezer 1"],["z2","Freezer 2"],["v1","Vetrina refrigerata bar/deposito"],["b1","Banco refrigerato bar"],["v2","Vetrina refrigerata sala"]];
-const SYNC_KEYS = ["haccp-trac-v1","haccp-temp-v1","haccp-abb-v1","haccp-pul-v1","haccp-nc-v1","haccp-mag-v1","haccp-magp-v1","haccp-fc-v1","haccp-ric-v1","haccp-chk-v1","haccp-mprez-v1","haccp-forn-v1","haccp-prep-v1","haccp-scad-v1","haccp-closed-v1","haccp-closedx-v1","haccp-openx-v1","haccp-bkp-v1","haccp-carta-v1"];
+const SYNC_KEYS = ["haccp-trac-v1","haccp-temp-v1","haccp-abb-v1","haccp-pul-v1","haccp-nc-v1","haccp-mag-v1","haccp-magp-v1","haccp-fc-v1","haccp-ric-v1","haccp-chk-v1","haccp-mprez-v1","haccp-forn-v1","haccp-prep-v1","haccp-scad-v1","haccp-closed-v1","haccp-closedx-v1","haccp-openx-v1","haccp-bkp-v1","haccp-carta-v1","haccp-pren-v1","haccp-rub-v1","haccp-prenlim-v1"];
+const MERGE_KEYS = ["haccp-pren-v1", "haccp-rub-v1"];
+const mergeById = (a, b) => { const m = new Map(); [...a, ...b].forEach(x => { if (!x || !x.id) return; const o = m.get(x.id); if (!o || (x.u || 0) > (o.u || 0) || ((x.u || 0) === (o.u || 0) && JSON.stringify(x) > JSON.stringify(o))) m.set(x.id, x); }); return [...m.values()].sort((p, q) => p.id < q.id ? -1 : p.id > q.id ? 1 : 0); };
 const rawSet = Storage.prototype.setItem;
 try { const o = localStorage.getItem("haccp-op"); if (o && o.charAt(0) !== '"') localStorage.setItem("haccp-op", JSON.stringify(o)); } catch(e){}
 const lsGet = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
@@ -124,11 +126,22 @@ async function cloudStart(){
       const m = tsMap(); let changed = false;
       const remote = {}; snap.docs.forEach(d => { remote[d.id] = d.data(); });
       if (snap.metadata.fromCache && first){ setCS("Senza rete: i dati restano sul telefono e si sincronizzano dopo", false); return; }
+      let mergedNow = false;
       SYNC_KEYS.forEach(k => {
         const r = remote[k], lts = m[k] || 0, has = lsGet(k) !== null;
+        if (MERGE_KEYS.includes(k)){
+          if (r && typeof r.v === "string"){
+            let loc = [], rem = []; try { loc = JSON.parse(lsGet(k) || "[]"); } catch(e){} try { rem = JSON.parse(r.v); } catch(e){}
+            const ms = JSON.stringify(mergeById(Array.isArray(loc) ? loc : [], Array.isArray(rem) ? rem : []));
+            if (ms !== lsGet(k)){ rawSet.call(localStorage, k, ms); mergedNow = true; }
+            if (ms !== r.v){ tsSet(k, Math.max(Date.now(), r.ts + 1)); cloudPush(k); } else tsSet(k, Math.max(m[k] || 0, r.ts));
+          } else if (has) cloudPush(k);
+          return;
+        }
         if (r && typeof r.v === "string" && r.ts > lts){ rawSet.call(localStorage, k, r.v); tsSet(k, r.ts); changed = true; }
         else if (has && (!r || lts > r.ts)) cloudPush(k);
       });
+      if (mergedNow) { try { dispatchEvent(new Event("prensync")); } catch(e){} }
       if (!snap.metadata.hasPendingWrites || changed) setCS("Sincronizzato alle " + hhmm(), true);
       if (changed){
         if (first && !sessionStorage.getItem("haccp-sync-rl")){ sessionStorage.setItem("haccp-sync-rl", "1"); location.reload(); return; }
@@ -192,6 +205,10 @@ h2{font-size:22px;margin:32px 0 10px}
 form{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
 label.f{display:block;margin-bottom:14px;font-size:14px;color:var(--mute)}
 input[type=text]{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-size:17px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px}
+#vPren input[type=tel],#vPren input[type=text],#vPren textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-size:17px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px}
+#pn_form p.bad:empty{display:none}
+#vPren input[type=number]{display:inline-block}
+#vPren .f input[type=number]{display:block;width:100%}
 input[type=text]:focus{outline:3px solid var(--acc);outline-offset:1px}
 #lotto{font-size:24px;font-weight:700;letter-spacing:.04em}
 .bad{border-color:var(--warn)!important;background:var(--warnbg)!important}
@@ -295,8 +312,8 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <main>
 <div class="brand"><img id="brandLogo" alt="Vittoria 1926 Osteria Contemporanea" width="90" height="58"></div>
 <div id="oggi" role="region" aria-label="Da fare oggi"></div>
-<div class="seg" id="areaSeg" role="group" aria-label="Area"><button type="button" id="aHaccp" aria-pressed="true" style="min-height:58px;font-size:22px">HACCP</button><button type="button" id="aMag" aria-pressed="false" style="min-height:58px;font-size:22px">Magazzino</button><button type="button" id="aCarta" aria-pressed="false" style="min-height:58px;font-size:22px">Carta</button></div>
-<nav class="tabs"><button type="button" id="tTemp" aria-pressed="false">Temperature</button><button type="button" id="tMerce" aria-pressed="false">Merce in arrivo</button><button type="button" id="tAbb" aria-pressed="false">Abbattimento</button><button type="button" id="tPul" aria-pressed="false">Pulizia</button><button type="button" id="tNc" aria-pressed="false">Non conformità</button><button type="button" id="tMis" aria-pressed="false">Mancanti</button><button type="button" id="tMag" aria-pressed="false">Magazzino</button><button type="button" id="tPrep" aria-pressed="false">Preparazioni</button><button type="button" id="tRic" aria-pressed="false">Menu cucina</button><button type="button" id="tCarta" aria-pressed="false">Cibo</button><button type="button" id="tVini" aria-pressed="false">Bevande</button><button type="button" id="tExp" aria-pressed="false">PDF</button><button type="button" id="tPiano" aria-pressed="false">Piano HACCP</button></nav>
+<div class="seg" id="areaSeg" role="group" aria-label="Area"><button type="button" id="aHaccp" aria-pressed="true" style="min-height:58px;font-size:22px">HACCP</button><button type="button" id="aMag" aria-pressed="false" style="min-height:58px;font-size:22px">Magazzino</button><button type="button" id="aCarta" aria-pressed="false" style="min-height:58px;font-size:22px">Sala</button></div>
+<nav class="tabs"><button type="button" id="tTemp" aria-pressed="false">Temperature</button><button type="button" id="tMerce" aria-pressed="false">Merce in arrivo</button><button type="button" id="tAbb" aria-pressed="false">Abbattimento</button><button type="button" id="tPul" aria-pressed="false">Pulizia</button><button type="button" id="tNc" aria-pressed="false">Non conformità</button><button type="button" id="tMis" aria-pressed="false">Mancanti</button><button type="button" id="tMag" aria-pressed="false">Magazzino</button><button type="button" id="tPrep" aria-pressed="false">Preparazioni</button><button type="button" id="tRic" aria-pressed="false">Menu cucina</button><button type="button" id="tCarta" aria-pressed="false">Cibo</button><button type="button" id="tVini" aria-pressed="false">Bevande</button><button type="button" id="tPren" aria-pressed="false">Prenotazioni</button><button type="button" id="tExp" aria-pressed="false">PDF</button><button type="button" id="tPiano" aria-pressed="false">Piano HACCP</button></nav>
 <div id="vox">
 <button type="button" class="p" id="voxBtn" style="width:100%;margin-bottom:10px" hidden>Comando vocale: tocca e parla</button>
 <label class="f" style="margin-bottom:8px">Scrivi o detta il comando (microfono della tastiera)<input id="voxIn" type="text" autocomplete="off" placeholder="es. freezer uno meno ventuno"></label>
@@ -499,6 +516,18 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 </div>
 <div id="ctResetBox"></div>
 <div id="ctView" hidden></div>
+</div>
+
+<div id="vPren" hidden>
+<h1>Prenotazioni</h1>
+<div class="seg" role="group" aria-label="Sezioni prenotazioni" style="margin-bottom:12px"><button type="button" id="pnB_g" aria-pressed="true">Giornata</button><button type="button" id="pnB_r" aria-pressed="false">Rubrica clienti</button></div>
+<div id="pn_g">
+<div class="row" style="align-items:end;margin-bottom:10px"><button type="button" id="pn_prev" aria-label="Giorno prima" style="min-width:52px">◀</button><label class="f" style="flex:1;margin:0"><input type="date" id="pn_day"></label><button type="button" id="pn_next" aria-label="Giorno dopo" style="min-width:52px">▶</button></div>
+<button type="button" id="pn_today" style="width:100%;margin-bottom:12px">Oggi</button>
+<div id="pn_head"></div><div id="pn_list"></div><div id="pn_form"></div>
+</div>
+<div id="pn_r" hidden></div>
+<datalist id="pn_rub"></datalist>
 </div>
 
 <div id="vPiano" hidden>
@@ -717,11 +746,11 @@ function scadList(){
   const today = ymd(Date.now()), done = load(SCK, {});
   return load("haccp-trac-v1", []).filter(e => (e.scadenza || "").trim() && !done[e.t]).map(e => { const d = parseScad(e.scadenza); return {e, d, left: d ? Math.round((new Date(d + "T12:00:00") - new Date(today + "T12:00:00")) / 864e5) : null}; }).sort((a, b) => (a.d || "9999") < (b.d || "9999") ? -1 : 1);
 }
-let lastH = "t", lastC = "k", lastM = "g";
-const HID = ["tTemp", "tMerce", "tAbb", "tPul", "tNc", "tMis", "tExp", "tPiano"], MID = ["tMag", "tPrep", "tRic"], CID = ["tCarta", "tVini"];
-const VIEWS = {t:["vTemp","tTemp"], m:["vMerce","tMerce"], a:["vAbb","tAbb"], p:["vPul","tPul"], n:["vNc","tNc"], x:["vMis","tMis"], g:["vMag","tMag"], q:["vPrep","tPrep"], r:["vRic","tRic"], k:["vCarta","tCarta"], j:["vCarta","tVini"], e:["vExp","tExp"], z:["vPiano","tPiano"]};
+let lastH = "t", lastC = "w", lastM = "g";
+const HID = ["tTemp", "tMerce", "tAbb", "tPul", "tNc", "tMis", "tExp", "tPiano"], MID = ["tMag", "tPrep", "tRic"], CID = ["tCarta", "tVini", "tPren"];
+const VIEWS = {t:["vTemp","tTemp"], m:["vMerce","tMerce"], a:["vAbb","tAbb"], p:["vPul","tPul"], n:["vNc","tNc"], x:["vMis","tMis"], g:["vMag","tMag"], q:["vPrep","tPrep"], r:["vRic","tRic"], k:["vCarta","tCarta"], j:["vCarta","tVini"], w:["vPren","tPren"], e:["vExp","tExp"], z:["vPiano","tPiano"]};
 function show(w){
-  const inM = "gurq".includes(w), inC = "kj".includes(w), inH = !inM && !inC; if (inM) lastM = w; else if (inC) lastC = w; else lastH = w;
+  const inM = "gurq".includes(w), inC = "kjw".includes(w), inH = !inM && !inC; if (inM) lastM = w; else if (inC) lastC = w; else lastH = w;
   HID.forEach(i => { $(i).hidden = !inH; }); MID.forEach(i => { $(i).hidden = !inM; }); CID.forEach(i => { $(i).hidden = !inC; });
   $("vox").hidden = !inH; $("aHaccp").setAttribute("aria-pressed", inH); $("aMag").setAttribute("aria-pressed", inM); $("aCarta").setAttribute("aria-pressed", inC);
   for (const k in VIEWS){ $(VIEWS[k][0]).hidden = VIEWS[k][0] !== VIEWS[w][0]; $(VIEWS[k][1]).setAttribute("aria-pressed", k === w); $(VIEWS[k][1]).onclick = () => show(k); }
@@ -734,6 +763,7 @@ function show(w){
   if (window.todayApi) todayApi.render();
   if (w === "r" && window.ricApi) ricApi.render();
   if (w === "q" && window.prepApi) prepApi.render();
+  if (w === "w" && window.prenApi) prenApi.render();
   if ((w === "k" || w === "j") && window.ctApi) ctApi.render(w === "j" ? "bev" : "cibo");
 }
 $("aHaccp").onclick = () => show(lastH); $("aMag").onclick = () => show(lastM); $("aCarta").onclick = () => show(lastC);
@@ -1319,6 +1349,7 @@ renderCal();
     tPrep: '<circle cx="12" cy="13" r="8"/><path d="M12 8v5l3 2M9 2h6"/>',
     tRic: '<path d="M4 11h16v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><path d="M2 11h20M9 3c0 2 2 2 2 4M14 3c0 2 2 2 2 4"/>',
     tFc: '<circle cx="12" cy="12" r="9"/><path d="M15.500 8.500a4 4 0 1 0 0 7M7 11h6M7 13.500h6"/>',
+    tPren: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15h3"/>',
     tVini: '<path d="M7 3h10v6a5 5 0 0 1-10 0z"/><path d="M12 14v7M8 21h8"/>',
     tCarta: '<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h8"/>',
     tExp: '<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>',
@@ -2716,6 +2747,171 @@ window.ricApi = {render: () => { fillProdList(); renderRic(); }};
 
 
 show((() => { try { const b = sessionStorage.getItem("haccp-back"); if (b){ sessionStorage.removeItem("haccp-back"); return b; } } catch(e){} return "t"; })());
+</script>
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const K = "haccp-pren-v1", KR = "haccp-rub-v1", KL = "haccp-prenlim-v1";
+const rd = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } };
+const wr = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} };
+const op = () => { try { return JSON.parse(localStorage.getItem("haccp-op")) || ""; } catch(e){ return ""; } };
+const pad = n => String(n).padStart(2, "0");
+const ymd = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const parse = s => new Date(s + "T12:00:00");
+const DN = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
+const MN = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
+const E = (t, p, ...k) => { const e = document.createElement(t); if (p) for (const a in p){ if (a === "text") e.textContent = p[a]; else if (a === "cls") e.className = p[a]; else if (a === "on") for (const ev in p.on) e.addEventListener(ev, p.on[ev]); else e.setAttribute(a, p[a]); } k.forEach(x => { if (x != null) e.append(x); }); return e; };
+let day = ymd(new Date()), sub = "g", editId = null, over = false;
+const limit = () => { const v = Number(rd(KL, 54)); return v > 0 ? v : 54; };
+const live = () => rd(K, []).filter(b => !b.x);
+const active = d => live().filter(b => b.d === d && b.st !== "ann");
+const total = (d, skip) => active(d).filter(b => b.id !== skip).reduce((a, b) => a + (Number(b.p) || 0), 0);
+const slots = d => { const sun = parse(d).getDay() === 0, a = sun ? [12, 0, 15, 0] : [19, 0, 23, 30], out = []; for (let m = a[0] * 60 + a[1]; m <= a[2] * 60 + a[3]; m += 15) out.push(pad(Math.floor(m / 60)) + ":" + pad(m % 60)); return out; };
+const turno = d => { const w = parse(d).getDay(); return w === 2 ? "Chiuso" : w === 0 ? "Pranzo" : "Cena"; };
+const upsert = (key, b) => { const all = rd(key, []), i = all.findIndex(x => x.id === b.id); b.u = Date.now(); if (i >= 0) all[i] = b; else all.push(b); wr(key, all); };
+const digits = s => String(s || "").replace(/\D/g, "");
+const rubKey = (n, t) => digits(t).length >= 6 ? digits(t) : "n:" + String(n).trim().toLowerCase();
+const rubrica = () => rd(KR, []).filter(c => !c.x).sort((a, b) => a.n.localeCompare(b.n, "it"));
+function addRub(n, t){
+  n = String(n || "").trim(); t = String(t || "").trim(); if (!n) return;
+  const id = rubKey(n, t), old = rd(KR, []).find(c => c.id === id);
+  upsert(KR, {id, n, tel: t || (old && old.tel) || ""});
+}
+function fillDl(){ const dl = $("pn_rub"); dl.textContent = ""; rubrica().forEach(c => dl.append(E("option", {value: c.n, label: c.tel || ""}))); }
+function head(){
+  const box = $("pn_head"); box.textContent = "";
+  const d = parse(day), tot = total(day), lim = limit(), t = turno(day);
+  box.append(E("p", {cls: "meta", style: "margin:0 0 6px", text: DN[d.getDay()].charAt(0).toUpperCase() + DN[d.getDay()].slice(1) + " " + d.getDate() + " " + MN[d.getMonth()] + " · " + t}));
+  if (t === "Chiuso") box.append(E("p", {cls: "s bad", text: "Il martedì il ristorante è chiuso."}));
+  const bad = tot > lim;
+  box.append(E("p", {cls: "s " + (bad ? "bad" : "ok"), style: "font-size:20px;font-weight:700;margin:4px 0", text: "Coperti " + tot + " / " + lim + (bad ? " · superato di " + (tot - lim) : " · liberi " + (lim - tot))}));
+  const bar = E("div", {style: "height:10px;border-radius:5px;background:var(--line);overflow:hidden;margin-bottom:8px"}); bar.append(E("div", {style: "height:100%;width:" + Math.min(100, tot / lim * 100) + "%;background:" + (bad ? "var(--warn)" : "var(--acc)")})); box.append(bar);
+  const by = {}; active(day).forEach(b => { const h = b.t.slice(0, 2); by[h] = (by[h] || 0) + (Number(b.p) || 0); });
+  const hs = Object.keys(by).sort(); if (hs.length){ const w = E("div", {style: "display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"}); hs.forEach(h => w.append(E("span", {style: "padding:4px 10px;border-radius:99px;border:1px solid var(--line);font-size:14px", text: h + ":00 → " + by[h]}))); box.append(w); }
+  const li = E("input", {type: "number", id: "pn_lim", inputmode: "numeric", value: String(lim), style: "width:90px"}); li.value = lim;
+  li.addEventListener("change", () => { const v = parseInt(li.value, 10); if (v > 0){ wr(KL, v); head(); } });
+  box.append(E("label", {cls: "f", style: "display:flex;gap:10px;align-items:center;margin:4px 0 12px"}, document.createTextNode("Limite coperti"), li));
+}
+function list(){
+  const box = $("pn_list"); box.textContent = "";
+  const all = live().filter(b => b.d === day).sort((a, b) => a.t.localeCompare(b.t) || (a.u || 0) - (b.u || 0));
+  if (!all.length){ box.append(E("p", {cls: "empty", text: "Nessuna prenotazione per questo giorno."})); return; }
+  all.forEach(b => {
+    const ann = b.st === "ann", c = E("div", {cls: "tk", style: ann ? "opacity:.55" : ""});
+    c.append(E("b", {style: ann ? "text-decoration:line-through" : "", text: b.t + " · " + b.n + " · " + b.p + (Number(b.p) === 1 ? " persona" : " persone")}));
+    if (b.tel){ const a = E("a", {href: "tel:" + b.tel.replace(/[^\d+]/g, ""), text: b.tel}); c.append(E("small", {}, a)); }
+    if (b.note) c.append(E("small", {text: b.note}));
+    c.append(E("small", {text: (b.by ? "Presa da " + b.by : "") + (b.st === "arr" ? " · arrivata" : ann ? " · annullata" : "")}));
+    const row = E("div", {cls: "row", style: "flex-wrap:wrap;margin-top:6px"});
+    const tg = (txt, st) => { const x = E("button", {type: "button", text: txt, style: "min-height:44px"}); x.setAttribute("aria-pressed", b.st === st); x.onclick = () => { b.st = b.st === st ? "" : st; upsert(K, b); render(); }; return x; };
+    row.append(tg("Arrivata", "arr"), tg("Annullata", "ann"));
+    const ed = E("button", {type: "button", text: "Modifica", style: "min-height:44px"}); ed.onclick = () => { editId = b.id; over = false; form(); window.scrollTo(0, document.body.scrollHeight); };
+    let on = false, tm = null; const del = E("button", {type: "button", text: "Elimina", style: "min-height:44px"});
+    del.onclick = () => { if (!on){ on = true; del.textContent = "Tocca ancora"; tm = setTimeout(() => { on = false; del.textContent = "Elimina"; }, 4000); return; } clearTimeout(tm); upsert(K, {id: b.id, x: 1}); render(); };
+    row.append(ed, del); c.append(row); box.append(c);
+  });
+}
+function form(pre){
+  const box = $("pn_form"); box.textContent = "";
+  const b = editId ? live().find(x => x.id === editId) : null;
+  const v = b || pre || {};
+  const f = E("div", {cls: "tk", style: "margin-top:14px"});
+  f.append(E("b", {text: b ? "Modifica prenotazione" : "Nuova prenotazione"}));
+  const n = E("input", {type: "text", id: "pn_n", autocomplete: "off", list: "pn_rub", value: v.n || ""}); n.value = v.n || "";
+  const t = E("input", {type: "tel", id: "pn_t", autocomplete: "off", inputmode: "tel"}); t.value = v.tel || "";
+  const p = E("input", {type: "number", id: "pn_p", inputmode: "numeric", min: "1"}); p.value = v.p || "";
+  const s = E("select", {id: "pn_o"}); slots(day).forEach(x => s.append(E("option", {value: x, text: x}))); s.value = v.t && slots(day).includes(v.t) ? v.t : slots(day)[0];
+  const nt = E("textarea", {id: "pn_note", rows: "2", placeholder: "Allergie, tavolo, richieste"}); nt.value = v.note || "";
+  const warn = E("p", {cls: "s bad", style: "min-height:1.3em;margin:6px 0"});
+  const go = E("button", {type: "button", cls: "p", text: "Salva prenotazione", style: "width:100%"});
+  const reset = () => { over = false; go.textContent = "Salva prenotazione"; warn.textContent = ""; };
+  [n, t, p, s, nt].forEach(x => x.addEventListener("input", reset));
+  n.addEventListener("change", () => { const c = rubrica().find(x => x.n.toLowerCase() === n.value.trim().toLowerCase()); if (c && !t.value.trim()) t.value = c.tel || ""; });
+  const lab = (a, x) => E("label", {cls: "f"}, document.createTextNode(a), x);
+  f.append(lab("Nome", n), lab("Telefono", t), E("div", {cls: "row"}, E("label", {cls: "f", style: "flex:1"}, document.createTextNode("Persone"), p), E("label", {cls: "f", style: "flex:1"}, document.createTextNode("Orario"), s)), lab("Note", nt), warn, go);
+  go.onclick = () => {
+    const name = n.value.trim(), pax = parseInt(p.value, 10);
+    if (!name){ warn.textContent = "Scrivi il nome."; return; }
+    if (!(pax >= 1)){ warn.textContent = "Scrivi quante persone."; return; }
+    const lim = limit(), after = total(day, b && b.id) + pax;
+    if (after > lim && !over && !(b && b.st === "ann")){ over = true; go.textContent = "Conferma comunque"; warn.textContent = "Con questa prenotazione i coperti sarebbero " + after + ", oltre il limite di " + lim + ". Tocca ancora per confermare."; return; }
+    const item = Object.assign({}, b || {}, {id: b ? b.id : Date.now().toString(36) + Math.random().toString(36).slice(2, 5), d: day, t: s.value, n: name, tel: t.value.trim(), p: pax, note: nt.value.trim()});
+    if (!b){ item.by = op(); item.st = ""; try { item.dv = localStorage.getItem("haccp-dev-id") || ""; } catch(e){} }
+    upsert(K, item); addRub(name, t.value); editId = null; over = false; render(); form();
+  };
+  if (b){ const cx = E("button", {type: "button", text: "Annulla modifica", style: "width:100%;margin-top:8px"}); cx.onclick = () => { editId = null; form(); }; f.append(cx); }
+  box.append(f);
+}
+function rubView(){
+  const box = $("pn_r"); box.textContent = "";
+  const q = E("input", {type: "text", id: "pn_rq", placeholder: "Cerca per nome o telefono", autocomplete: "off"});
+  const out = E("div");
+  const draw = () => {
+    out.textContent = ""; const s = q.value.trim().toLowerCase(), cs = rubrica().filter(c => !s || c.n.toLowerCase().includes(s) || digits(c.tel).includes(digits(s) || "§"));
+    if (!cs.length){ out.append(E("p", {cls: "empty", text: rubrica().length ? "Nessun cliente trovato." : "La rubrica si riempie da sola con le prenotazioni che salvi."})); return; }
+    cs.forEach(c => {
+      const n = live().filter(b => rubKey(b.n, b.tel) === c.id || b.n.trim().toLowerCase() === c.n.toLowerCase()).length;
+      const card = E("div", {cls: "tk"}, E("b", {text: c.n}), c.tel ? E("small", {}, E("a", {href: "tel:" + c.tel.replace(/[^\d+]/g, ""), text: c.tel})) : null, E("small", {text: n + (n === 1 ? " prenotazione" : " prenotazioni")}));
+      const row = E("div", {cls: "row", style: "margin-top:6px"});
+      const pr = E("button", {type: "button", cls: "p", text: "Prenota", style: "min-height:44px"}); pr.onclick = () => { sub = "g"; editId = null; render(); form({n: c.n, tel: c.tel}); window.scrollTo(0, document.body.scrollHeight); };
+      let on = false, tm = null; const del = E("button", {type: "button", text: "Elimina", style: "min-height:44px"});
+      del.onclick = () => { if (!on){ on = true; del.textContent = "Tocca ancora"; tm = setTimeout(() => { on = false; del.textContent = "Elimina"; }, 4000); return; } clearTimeout(tm); upsert(KR, {id: c.id, x: 1}); render(); };
+      row.append(pr, del); card.append(row); out.append(card);
+    });
+  };
+  q.addEventListener("input", draw); box.append(E("label", {cls: "f"}, document.createTextNode("Rubrica clienti"), q), out); draw();
+}
+function render(){
+  try { barUpd(); } catch(e){}
+  ["g", "r"].forEach(k => { $("pn_" + k).hidden = k !== sub; $("pnB_" + k).setAttribute("aria-pressed", k === sub); });
+  $("pn_day").value = day; fillDl();
+  if (sub === "g"){ head(); list(); if (!$("pn_form").firstChild) form(); } else rubView();
+}
+$("pnB_g").onclick = () => { sub = "g"; render(); };
+$("pnB_r").onclick = () => { sub = "r"; render(); };
+const setDay = d => { day = d; editId = null; over = false; $("pn_form").textContent = ""; render(); };
+$("pn_day").addEventListener("change", () => { if ($("pn_day").value) setDay($("pn_day").value); });
+$("pn_prev").onclick = () => { const d = parse(day); d.setDate(d.getDate() - 1); setDay(ymd(d)); };
+$("pn_next").onclick = () => { const d = parse(day); d.setDate(d.getDate() + 1); setDay(ymd(d)); };
+$("pn_today").onclick = () => setDay(ymd(new Date()));
+addEventListener("prensync", () => { barUpd(); checkNew(); if ($("vPren").hidden) return; if ($("pn_form").contains(document.activeElement)){ head(); list(); fillDl(); } else render(); });
+window.prenApi = {render};
+// ---- barra "stasera" e avvisi di nuove prenotazioni ----
+const bar = E("button", {type: "button", id: "pnBar", style: "display:none;width:100%;text-align:left;margin:0 0 12px;min-height:60px;font-size:19px"});
+const ogEl = $("oggi"); if (ogEl && ogEl.parentNode) ogEl.parentNode.insertBefore(bar, ogEl);
+function barUpd(){
+  const today = ymd(new Date()), t = turno(today);
+  if (t === "Chiuso"){ bar.style.display = "none"; return; }
+  const tot = total(today), n = active(today).length, lim = limit();
+  bar.style.display = "block"; bar.className = tot > lim ? "bad" : "";
+  bar.textContent = (t === "Pranzo" ? "Prenotati a pranzo: " : "Prenotati stasera: ") + tot + " coperti" + " (" + n + (n === 1 ? " prenotazione" : " prenotazioni") + ") · limite " + lim;
+}
+bar.onclick = () => { $("aCarta").click(); $("tPren").click(); setDay(ymd(new Date())); };
+const SEEN = "haccp-pren-seen";
+function seenSet(){ try { const v = JSON.parse(localStorage.getItem(SEEN)); return v ? new Set(v) : null; } catch(e){ return null; } }
+function seenSave(set){ try { localStorage.setItem(SEEN, JSON.stringify([...set].slice(-600))); } catch(e){} }
+function toast(msg){
+  let d = document.getElementById("pnToast"); if (d) d.remove();
+  d = E("button", {type: "button", id: "pnToast", text: msg, style: "position:fixed;top:8px;left:8px;right:8px;z-index:99;min-height:52px;background:var(--acc);color:var(--accink);border:0;border-radius:10px;font-size:17px"});
+  d.onclick = () => { d.remove(); $("aCarta").click(); $("tPren").click(); }; document.body.appendChild(d); setTimeout(() => { if (d.parentNode) d.remove(); }, 12000);
+}
+async function checkNew(){
+  const now = live().filter(b => b.d >= ymd(new Date()) && b.st !== "ann"), prev = seenSet();
+  const ids = new Set(prev || []); now.forEach(b => ids.add(b.id));
+  if (prev){
+    const dv = (() => { try { return localStorage.getItem("haccp-dev-id") || ""; } catch(e){ return ""; } })();
+    now.filter(b => !prev.has(b.id) && b.dv !== dv).forEach(async b => {
+      const w = parse(b.d), msg = "Nuova prenotazione: " + b.n + " · " + b.p + (Number(b.p) === 1 ? " persona" : " persone") + " · " + b.t + " · " + DN[w.getDay()].slice(0, 3) + " " + w.getDate() + "/" + (w.getMonth() + 1);
+      let shown = false;
+      try { if ("Notification" in window && Notification.permission === "granted" && document.hidden && navigator.serviceWorker){ const reg = await navigator.serviceWorker.ready; await reg.showNotification("Nuova prenotazione", {body: msg.replace("Nuova prenotazione: ", ""), icon: "icon-192.png", badge: "icon-192.png", tag: "pren-" + b.id, data: {url: "./"}}); shown = true; } } catch(e){}
+      if (!shown) toast(msg);
+    });
+  }
+  seenSave(ids);
+}
+setInterval(barUpd, 60000); document.addEventListener("visibilitychange", () => { if (!document.hidden) barUpd(); });
+barUpd(); checkNew();
+})();
 </script>
 </body>
 </html>
