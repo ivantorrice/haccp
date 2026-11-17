@@ -483,7 +483,7 @@ $("file").addEventListener("change", async ev => {
     openForm(d || {});
     status(d && d.lotto ? "Letto. Controlla che il lotto sia giusto." : "Lotto non leggibile: inseriscilo a mano o rifai la foto.", !(d && d.lotto));
   } catch(e){
-    status("Lettura non riuscita: compila i campi a mano o rifai la foto.", true); openForm({});
+    status("Lettura non riuscita: compila i campi a mano o rifai la foto." + (e && e.message ? " [" + String(e.message).slice(0,160) + "]" : ""), true); openForm({});
   }
 });
 
@@ -1315,7 +1315,7 @@ async function readDoc(f){
       if (r.nome || r.q != null) rev.righe.push(r);
     });
     setMsg(rev.righe.length ? "Letto. Controlla ogni riga prima di caricare: la lettura di numeri e prezzi può sbagliare." : "Non ho trovato righe leggibili: aggiungile a mano o rifai la foto.", !rev.righe.length);
-  } catch(e){ if (!rev) rev = newRev(); setMsg("Lettura non riuscita: compila a mano o rifai la foto.", true); }
+  } catch(e){ if (!rev) rev = newRev(); setMsg("Lettura non riuscita: compila a mano o rifai la foto." + (e && e.message ? " [" + String(e.message).slice(0,160) + "]" : ""), true); }
   renderRev();
 }
 $("mg_file").addEventListener("change", ev => { const f = ev.target.files[0]; ev.target.value = ""; readDoc(f); });
@@ -1568,7 +1568,7 @@ async function impRun(text, blob){
     e._step = "prezzi";
     if (!e.nome && e.ingr.length === 1 && !e.ingr[0].prodotto){ st.textContent = "Non ho trovato una ricetta leggibile. Riprova con più testo o una foto più nitida."; st.style.color = "var(--warn)"; return; }
     ed = e; impSet(false); renderRic(); window.scrollTo(0, 0);
-  } catch(err){ st.textContent = "Lettura non riuscita. Riprova, o scrivi la ricetta a mano."; st.style.color = "var(--warn)"; }
+  } catch(err){ st.textContent = "Lettura non riuscita. Riprova, o scrivi la ricetta a mano." + (err && err.message ? " [" + String(err.message).slice(0,160) + "]" : ""); st.style.color = "var(--warn)"; }
 }
 $("imp_gn").onclick = async () => {
   const n = $("imp_n").value.trim(), st = $("imp_st"); st.style.color = "";
