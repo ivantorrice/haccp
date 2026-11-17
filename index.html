@@ -22,14 +22,16 @@ async function shrinkImg(blob, max){
     return await new Promise(ok => c.toBlob(x => ok(x || blob), "image/jpeg", 0.8));
   } catch(e){ return blob; }
 }
+const FB_V = "12.0.0", FB_B = "https://www.gstatic.com/firebasejs/" + FB_V + "/";
+let fbAppP = null;
+const fbApp = () => fbAppP || (fbAppP = (async () => { const m = await import(FB_B + "firebase-app.js"); return m.getApps().length ? m.getApp() : m.initializeApp(FB_CFG); })());
 let aiP = null;
 function aiInit(){
   if (aiP) return aiP;
   aiP = (async () => {
-    const V = "12.0.0", B = "https://www.gstatic.com/firebasejs/" + V + "/";
-    const {initializeApp} = await import(B + "firebase-app.js");
-    const {getAI, getGenerativeModel, GoogleAIBackend} = await import(B + "firebase-ai.js");
-    const ai = getAI(initializeApp(FB_CFG), {backend: new GoogleAIBackend()});
+    const app = await fbApp();
+    const {getAI, getGenerativeModel, GoogleAIBackend} = await import(FB_B + "firebase-ai.js");
+    const ai = getAI(app, {backend: new GoogleAIBackend()});
     return {ai, getGenerativeModel};
   })();
   aiP.catch(() => { aiP = null; });
@@ -67,6 +69,79 @@ const aiSample = {
     throw lastErr || new Error("ai");
   }
 };
+
+// ---- Cloud (Firestore) ----
+const SYNC_KEYS = ["haccp-trac-v1","haccp-temp-v1","haccp-abb-v1","haccp-pul-v1","haccp-nc-v1","haccp-mag-v1","haccp-magp-v1","haccp-fc-v1","haccp-ric-v1","haccp-chk-v1","haccp-mprez-v1","haccp-forn-v1","haccp-prep-v1","haccp-scad-v1","haccp-closed-v1","haccp-closedx-v1","haccp-openx-v1","haccp-bkp-v1"];
+const rawSet = Storage.prototype.setItem;
+const lsGet = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
+const tsMap = () => { try { return JSON.parse(lsGet("haccp-sync-ts") || "{}"); } catch(e){ return {}; } };
+const tsSet = (k, t) => { const m = tsMap(); m[k] = t; try { rawSet.call(localStorage, "haccp-sync-ts", JSON.stringify(m)); } catch(e){} };
+window.cloudState = {text: "Non collegato", ok: false};
+function setCS(text, ok){ window.cloudState = {text, ok: !!ok}; try { dispatchEvent(new CustomEvent("cloudstate")); } catch(e){} }
+let cloud = null; const timers = {};
+Storage.prototype.setItem = function(k, v){
+  rawSet.call(this, k, v);
+  if (this === window.localStorage && SYNC_KEYS.includes(k)){ tsSet(k, Date.now()); if (cloud){ clearTimeout(timers[k]); timers[k] = setTimeout(() => cloudPush(k), 1200); } }
+};
+const hhmm = () => new Date().toLocaleTimeString("it-IT", {hour: "2-digit", minute: "2-digit"});
+async function cloudPush(k){
+  if (!cloud) return;
+  const v = lsGet(k); if (v === null) return;
+  if (v.length > 900000){ setCS("Dati troppo grandi per il cloud (" + k + ")", false); return; }
+  let ts = tsMap()[k]; if (!ts){ ts = Date.now(); tsSet(k, ts); }
+  try { await cloud.m.setDoc(cloud.m.doc(cloud.col, k), {v, ts, by: cloud.dev}); setCS("Sincronizzato alle " + hhmm(), true); }
+  catch(e){ setCS(cloudErr(e), false); }
+}
+function cloudErr(e){
+  const c = String((e && (e.code || e.message)) || "");
+  if (/admin-restricted|operation-not-allowed|configuration-not-found/.test(c)) return "Accesso anonimo non attivato in Firebase (Authentication)";
+  if (/permission-denied/.test(c)) return "Permesso negato: regole di Firestore da pubblicare, o codice cucina troppo corto";
+  if (/unavailable|network|offline/.test(c)) return "Senza rete: i dati restano sul telefono e si sincronizzano dopo";
+  return "Errore cloud: " + c.slice(0, 90);
+}
+function cloudBanner(){
+  if (document.getElementById("cloudBn")) return;
+  const d = document.createElement("button"); d.id = "cloudBn"; d.type = "button"; d.textContent = "Dati aggiornati da un altro telefono. Tocca per ricaricare.";
+  d.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;min-height:48px;background:#0e5a58;color:#fff;border:0;border-radius:10px;font-size:16px";
+  d.onclick = () => location.reload(); document.body.appendChild(d);
+}
+async function cloudStart(){
+  const code = (lsGet("haccp-sync-code") || "").trim();
+  if (code.length < 8){ setCS("Non collegato", false); return; }
+  setCS("Collegamento in corso…", false);
+  try {
+    const app = await fbApp();
+    const [fa, fs] = await Promise.all([import(FB_B + "firebase-auth.js"), import(FB_B + "firebase-firestore.js")]);
+    const auth = fa.getAuth(app); if (!auth.currentUser) await fa.signInAnonymously(auth);
+    let db; try { db = fs.initializeFirestore(app, {localCache: fs.persistentLocalCache({tabManager: fs.persistentMultipleTabManager()})}); } catch(e){ db = fs.getFirestore(app); }
+    let dev = lsGet("haccp-dev-id"); if (!dev){ dev = Math.random().toString(36).slice(2, 10); rawSet.call(localStorage, "haccp-dev-id", dev); }
+    cloud = {m: fs, col: fs.collection(db, "kitchens", code, "data"), dev};
+    let first = true;
+    fs.onSnapshot(cloud.col, snap => {
+      const m = tsMap(); let changed = false;
+      const remote = {}; snap.docs.forEach(d => { remote[d.id] = d.data(); });
+      if (snap.metadata.fromCache && first){ setCS("Senza rete: i dati restano sul telefono e si sincronizzano dopo", false); return; }
+      SYNC_KEYS.forEach(k => {
+        const r = remote[k], lts = m[k] || 0, has = lsGet(k) !== null;
+        if (r && typeof r.v === "string" && r.ts > lts){ rawSet.call(localStorage, k, r.v); tsSet(k, r.ts); changed = true; }
+        else if (has && (!r || lts > r.ts)) cloudPush(k);
+      });
+      if (!snap.metadata.hasPendingWrites || changed) setCS("Sincronizzato alle " + hhmm(), true);
+      if (changed){
+        if (first && !sessionStorage.getItem("haccp-sync-rl")){ sessionStorage.setItem("haccp-sync-rl", "1"); location.reload(); return; }
+        cloudBanner();
+      }
+      first = false;
+    }, e => setCS(cloudErr(e), false));
+  } catch(e){ cloud = null; setCS(cloudErr(e), false); }
+}
+window.cloudApi = {
+  start: cloudStart,
+  connect: (code, name) => { rawSet.call(localStorage, "haccp-sync-code", code.trim()); if (name && name.trim()) rawSet.call(localStorage, "haccp-op", name.trim()); sessionStorage.removeItem("haccp-sync-rl"); location.reload(); },
+  disconnect: () => { try { localStorage.removeItem("haccp-sync-code"); } catch(e){} location.reload(); },
+  wipe: () => { try { Object.keys(localStorage).filter(k => k.startsWith("haccp-") && !["haccp-op", "haccp-sync-code", "haccp-dev-id"].includes(k)).forEach(k => localStorage.removeItem(k)); } catch(e){} location.reload(); }
+};
+addEventListener("load", () => setTimeout(cloudStart, 300));
 if (!window.claude) window.claude = { use: async n => n === "sample" ? aiSample : n === "downloads" ? { save: async ({filename, data}) => { const u = URL.createObjectURL(data), a = document.createElement("a"); a.href = u; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); } } : null };
 if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 </script>
@@ -384,6 +459,14 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <h2 style="margin-top:28px">Backup del mese</h2>
 <p class="sub">Scarica in un solo PDF tutti i registri del mese scelto qui sopra. Conservalo come copia di sicurezza.</p>
 <button type="button" class="p" id="bkBtn" style="width:100%">Backup: tutti i registri in un PDF</button>
+<h2 style="margin-top:28px">Cloud e firma</h2>
+<p class="sub">Con il cloud i registri non si perdono se cambi telefono. Stesso codice sui telefoni della cucina = stessi dati. Il nome qui sotto è la firma sui registri.</p>
+<label class="f">Nome e cognome (firma)<input id="cdName" type="text" autocomplete="name"></label>
+<label class="f">Codice della cucina (almeno 8 caratteri, non darlo a estranei)<input id="cdCode" type="text" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+<button type="button" class="p" id="cdGo" style="width:100%">Collega al cloud</button>
+<p id="cdSt" role="status" class="meta"></p>
+<button type="button" id="cdOff" style="width:100%;margin-bottom:10px" hidden>Scollega questo telefono</button>
+<button type="button" id="cdWipe" style="width:100%">Azzera i dati di prova su questo telefono</button>
 <h2 style="margin-top:28px">Calendario delle chiusure</h2>
 <p class="sub">Nei giorni di chiusura temperature e pulizie sono bloccate e nei PDF compare «Chiuso». Se lavorate in un giorno chiuso, lo sblocchi dalla scheda del giorno.</p>
 <div class="seg" id="clWd" role="group" aria-label="Giorni della settimana chiusi" style="flex-wrap:wrap"></div>
@@ -1091,6 +1174,22 @@ $("clAdd").onclick = () => {
   st.textContent = "Aggiunto: " + dmy(d) + ". In quel giorno temperature e pulizie sono bloccate."; $("clDate").value = ""; refreshAll();
 };
 renderCal();
+(function(){
+  const code = (localStorage.getItem("haccp-sync-code") || "");
+  $("cdCode").value = code; $("cdName").value = load(OPKEY, "");
+  const upd = () => { const c = window.cloudState || {text: "Non collegato"}; $("cdSt").textContent = c.text; $("cdOff").hidden = !(localStorage.getItem("haccp-sync-code")); };
+  addEventListener("cloudstate", upd); upd();
+  $("cdGo").onclick = () => {
+    const n = $("cdName").value.trim(), c = $("cdCode").value.trim();
+    if (!n){ $("cdSt").textContent = "Scrivi nome e cognome."; return; }
+    if (c.length < 8){ $("cdSt").textContent = "Il codice deve avere almeno 8 caratteri."; return; }
+    window.cloudApi.connect(c, n);
+  };
+  $("cdOff").onclick = () => window.cloudApi.disconnect();
+  let armed = false;
+  $("cdWipe").onclick = () => { if (!armed){ armed = true; $("cdWipe").textContent = "Tocca ancora per cancellare tutto (non si può annullare)"; setTimeout(() => { armed = false; $("cdWipe").textContent = "Azzera i dati di prova su questo telefono"; }, 6000); return; } window.cloudApi.wipe(); };
+})();
+
 
 // --- Comando vocale
 (function(){
