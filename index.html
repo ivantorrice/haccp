@@ -115,10 +115,11 @@ async function cloudStart(){
     const app = await fbApp();
     const [fa, fs] = await Promise.all([import(FB_B + "firebase-auth.js"), import(FB_B + "firebase-firestore.js")]);
     const auth = fa.getAuth(app); if (!auth.currentUser) await fa.signInAnonymously(auth);
-    let db; try { db = fs.initializeFirestore(app, {localCache: fs.persistentLocalCache({tabManager: fs.persistentMultipleTabManager()})}); } catch(e){ db = fs.getFirestore(app); }
+    let db; try { db = fs.initializeFirestore(app, {localCache: fs.persistentLocalCache({tabManager: fs.persistentMultipleTabManager()}), experimentalAutoDetectLongPolling: true}); } catch(e){ db = fs.getFirestore(app); }
     let dev = lsGet("haccp-dev-id"); if (!dev){ dev = Math.random().toString(36).slice(2, 10); rawSet.call(localStorage, "haccp-dev-id", dev); }
     cloud = {m: fs, col: fs.collection(db, "kitchens", code, "data"), dev};
     let first = true;
+    setTimeout(() => { if (first && window.cloudState && !window.cloudState.ok) setCS("Non riesco a raggiungere il database Firestore. Controlla di avere rete e che in Firebase il database sia creato con nome (default). Se è così, riprova tra un minuto.", false); }, 15000);
     fs.onSnapshot(cloud.col, snap => {
       const m = tsMap(); let changed = false;
       const remote = {}; snap.docs.forEach(d => { remote[d.id] = d.data(); });
@@ -537,6 +538,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <label class="f">Codice della cucina (almeno 8 caratteri, non darlo a estranei)<input id="cdCode" type="text" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
 <button type="button" class="p" id="cdGo" style="width:100%">Collega al cloud</button>
 <p id="cdSt" role="status" class="meta"></p>
+<p class="meta" style="margin-top:0">Versione app: 17/11 ore 16:40 (cloud con rete migliorata)</p>
 <button type="button" id="cdNot" style="width:100%;margin-bottom:6px" hidden>Attiva le notifiche delle 18</button>
 <p id="cdNotSt" class="meta" style="margin-top:0" hidden></p>
 <button type="button" id="cdOff" style="width:100%;margin-bottom:10px" hidden>Scollega questo telefono</button>
