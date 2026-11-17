@@ -51,7 +51,7 @@ body{background:#EDE2D0;color:#3b3225}
 .al p{font:500 14px/1.5 Montserrat,Arial,sans-serif;color:#5b4f3e;margin:10px 0}
 .al li{font:500 16px/1.4 Montserrat,Arial,sans-serif;color:#3b3225;padding:8px 0;border-bottom:1px solid rgba(130,117,96,.35);list-style:none;display:flex;gap:12px}
 .al li b{flex:0 0 28px;color:#827560}.al ul{margin:0;padding:0}
-.dt{display:inline-block;font:700 10px Montserrat,Arial,sans-serif;border:1.5px solid #827560;color:#827560;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle;line-height:1.4}.leg{display:flex;flex-wrap:wrap;gap:6px 14px;margin:6px 0 10px;font:500 14px Montserrat,Arial,sans-serif;color:#5b4f3e}.leg .dt{margin:0 6px 0 0}
+.dt{display:inline-block;width:22px;height:22px;margin-left:8px;vertical-align:-4px;color:#827560}.dt svg{width:100%;height:100%;display:block}.leg{display:flex;flex-direction:column;gap:8px;margin:6px 0 10px;font:500 15px Montserrat,Arial,sans-serif;color:#3b3225}.leg span{display:flex;align-items:center;gap:10px}.leg .dt{margin:0}
 .mh .an{display:block;margin-top:8px;font:600 13px Montserrat,Arial,sans-serif;color:#827560}
 .mf{text-align:center;font:600 12px Montserrat,Arial,sans-serif;color:#827560;margin:40px 0 0}
 </style>
@@ -98,6 +98,8 @@ const LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgUAAAFKCAYAAACNeiwp
 
 const CACHE = "menu-pubblico-v1";
 const DT = [["sg", "SG", "Senza glutine (celiaci)"], ["v", "V", "Vegetariano"], ["vg", "VG", "Vegano"]];
+const DTI = {"sg": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 22V8\"/><path d=\"M12 2C13.400 3.500 13.400 6 12 7.500C10.600 6 10.600 3.500 12 2z\"/><path d=\"M12 13C9.500 13 7.500 11 7.500 8.5C10 8.5 12 10.5 12 13z\"/><path d=\"M12 13C14.500 13 16.500 11 16.500 8.5C14 8.5 12 10.5 12 13z\"/><path d=\"M12 18.5C9.500 18.5 7.500 16.5 7.500 14.0C10 14.0 12 16.0 12 18.5z\"/><path d=\"M12 18.5C14.500 18.5 16.500 16.5 16.500 14.0C14 14.0 12 16.0 12 18.5z\"/><path d=\"M3 3l18 18\" stroke-width=\"2.200\"/></svg>", "v": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4.500 19.500C4.500 10.500 9.500 5 20 4c-1 10-6 15.500-15.500 15.500z\"/><path d=\"M4.500 19.500L14 10\"/></svg>", "vg": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 21.500V11\"/><path d=\"M12 15C12 11 9 8.500 4.500 8.500 4.500 12.500 7.500 15 12 15z\"/><path d=\"M12 11.500C12 7.500 15 5 19.500 5c0 4-3 6.500-7.500 6.500z\"/></svg>"};
+const dtEl = k => { const s = E("span", {cls: "dt", role: "img", "aria-label": DT.find(x => x[0] === k)[2]}); s.innerHTML = DTI[k]; return s; };
 function show(carta){
   const box = document.getElementById("pages"); box.textContent = "";
   const head = E("div", {cls: "mh"}); head.append(E("img", {src: LOGO, alt: "Vittoria 1926 Osteria Contemporanea"}), E("a", {cls: "an", href: "#allergeni", text: "Elenco degli allergeni"})); box.append(head);
@@ -122,14 +124,14 @@ function show(carta){
     if (s.motto) sec.append(E("div", {cls: "mq", text: s.motto.split(/\s+/).join("\n")}));
     s.voci.forEach(v => {
       const n = E("div", {cls: "n"}, document.createTextNode(v.n || "")); if (v.a) n.append(E("sup", {text: v.a}));
-      { const f = v.dt || []; DT.filter(x => f.includes(x[0]) && !(x[0] === "v" && f.includes("vg"))).forEach(x => n.append(E("span", {cls: "dt", text: x[1]}))); }
+      { const f = v.dt || []; DT.filter(x => f.includes(x[0]) && !(x[0] === "v" && f.includes("vg"))).forEach(x => n.append(dtEl(x[0]))); }
       sec.append(E("div", {cls: "mi"}, E("div", {cls: "l"}, n, v.d ? E("div", {cls: "d", text: v.d}) : null), E("div", {cls: "p", text: v.p || ""})));
     });
     main.append(sec);
   });
   const ALL = ["Cereali contenenti glutine","Crostacei","Uova","Pesce","Arachidi","Soia","Latte","Frutta a guscio","Sedano","Senape","Sesamo","Anidride solforosa e solfiti","Lupini","Molluschi"];
   const al = E("section", {cls: "al ms", id: "allergeni"}); al.append(E("h2", {text: "Allergeni"}), E("p", {text: "I numeri accanto ai piatti indicano gli allergeni presenti. Per intolleranze o allergie chiedi pure al nostro personale."}));
-  const lg = E("div", {cls: "leg"}); DT.forEach(x => lg.append(E("span", {}, E("span", {cls: "dt", text: x[1]}), document.createTextNode(x[2])))); al.append(E("p", {text: "Piatti adatti a una dieta particolare:"}), lg);
+  const lg = E("div", {cls: "leg"}); DT.forEach(x => lg.append(E("span", {}, dtEl(x[0]), document.createTextNode(x[2])))); al.append(E("p", {text: "Piatti adatti a una dieta particolare:"}), lg);
   const ul = E("ul"); ALL.forEach((t, i) => ul.append(E("li", {}, E("b", {text: String(i + 1)}), document.createTextNode(t)))); al.append(ul);
   main.append(al); nav.append(E("a", {href: "#allergeni", text: "Allergeni"}));
   if (nav.children.length > 1) box.append(nav);
