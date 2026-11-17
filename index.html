@@ -1356,8 +1356,8 @@ renderCal();
     inp.addEventListener("input", () => { fn(inp.value); sv(); });
     return E("label", {cls: "f"}, document.createTextNode(lab), inp);
   }
-  function voceEd(s, vi, p, si){
-    const v = s.voci[vi], key = si + "." + vi, wrap = E("div", {style: "border:1px solid var(--line,#ccc);border-radius:10px;padding:8px;margin:6px 0"});
+  function voceEd(s, vi, p, si, pfx){
+    const v = s.voci[vi], key = (pfx || "") + si + "." + vi, wrap = E("div", {style: "border:1px solid var(--line,#ccc);border-radius:10px;padding:8px;margin:6px 0"});
     const head = E("div", {cls: "row", style: "align-items:center"});
     const t = E("button", {type: "button", style: "flex:1;text-align:left;min-height:44px", text: (v.n || "(senza nome)") + "  ·  " + (v.p || "")});
     t.onclick = () => { openV = openV === key ? "" : key; renderList(); };
@@ -1407,8 +1407,49 @@ renderCal();
     box.append(dup, arm("Elimina questa pagina", () => { carta.splice(i, 1); sv(); openP = -1; openV = ""; renderList(); }));
     return box;
   }
+  let ctMode = "portate", openS = "";
+  const groupOf = p => p.tipo === "testo" ? ((p.sezioni[0] && p.sezioni[0].nome) || p.titolo || "Testo") : (p.titolo ? p.titolo : "Bar, birra e cocktail");
+  function renderPortate(box){
+    const groups = [], idx = {};
+    carta.forEach((p, i) => {
+      if (p.tipo === "cover") return;
+      const g = groupOf(p); if (!(g in idx)){ idx[g] = groups.length; groups.push({g, items: []}); }
+      (p.sezioni || []).forEach((s, si) => groups[idx[g]].items.push({p, i, s, si}));
+    });
+    groups.forEach(G => {
+      box.append(E("h2", {text: G.g.charAt(0) + G.g.slice(1).toLowerCase(), style: "font-size:19px;margin:18px 0 8px"}));
+      G.items.forEach(({p, i, s, si}) => {
+        const key = i + "." + si, c = E("div", {cls: "card", style: "margin-bottom:10px"}), full = tooFull(p);
+        const nm = s.nome || (G.g.charAt(0) + G.g.slice(1).toLowerCase() + " · pag. " + (i + 1));
+        const t = E("button", {type: "button", style: "width:100%;text-align:left;min-height:48px;font-weight:600", text: nm + " · " + s.voci.length + " voci" + (full ? "  ⚠ pagina troppo piena" : "")});
+        if (full) t.style.color = "var(--warn)";
+        t.onclick = () => { openS = openS === key ? "" : key; openV = ""; renderList(); };
+        c.append(t);
+        if (openS === key){
+          if (full) c.append(E("p", {cls: "meta", text: "Questa pagina del PDF è troppo piena: accorcia qualche descrizione o togli una voce, altrimenti il testo esce dal foglio."}));
+          c.append(field("Titolo della portata (es. PRIMI)", s.nome, x => { s.nome = x; }));
+          s.voci.forEach((v, vi) => c.append(voceEd(s, vi, p, si, "s" + i + ":")));
+          const add = E("button", {type: "button", text: "+ Aggiungi voce", style: "width:100%;margin-top:6px"});
+          add.onclick = () => { s.voci.push({n: "Nuova voce", d: "", a: "", p: ""}); sv(); openV = "s" + i + ":" + si + "." + (s.voci.length - 1); renderList(); };
+          c.append(add);
+        }
+        box.append(c);
+      });
+    });
+  }
   function renderList(){
     const box = $("ctList"); if (!box) return; box.textContent = "";
+    const seg = E("div", {cls: "seg", style: "margin-bottom:12px"});
+    [["portate", "Per portate"], ["pagine", "Per pagine"]].forEach(([m, lab]) => {
+      const b = E("button", {type: "button", text: lab, style: "min-height:48px"}); b.setAttribute("aria-pressed", ctMode === m);
+      b.onclick = () => { ctMode = m; openP = -1; openV = ""; openS = ""; renderList(); }; seg.append(b);
+    });
+    box.append(seg);
+    $("ctAdd").hidden = ctMode !== "pagine";
+    if (ctMode === "portate"){
+      box.append(E("p", {cls: "meta", text: "Tocca una portata per cambiare piatti e prezzi. Il PDF resta con le stesse pagine e la stessa grafica."}));
+      renderPortate(box); return;
+    }
     carta.forEach((p, i) => {
       const c = E("div", {cls: "card", style: "margin-bottom:10px"});
       const row = E("div", {cls: "row", style: "align-items:center"});
