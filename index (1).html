@@ -1,0 +1,1875 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HACCP cucina</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1f3a2e">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script>
+const FB_CFG = {apiKey:"AIzaSyDgR7_yy8vwORgM1aJcDNU9tkyGfvSDsEk",authDomain:"vittoria-haccp.firebaseapp.com",projectId:"vittoria-haccp",storageBucket:"vittoria-haccp.firebasestorage.app",messagingSenderId:"122368607372",appId:"1:122368607372:web:3b4b70f515ee5eae9367a9"};
+const AI_MODELS = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"];
+let aiP = null;
+function aiInit(){
+  if (aiP) return aiP;
+  aiP = (async () => {
+    const V = "12.0.0", B = "https://www.gstatic.com/firebasejs/" + V + "/";
+    const {initializeApp} = await import(B + "firebase-app.js");
+    const {getAI, getGenerativeModel, GoogleAIBackend} = await import(B + "firebase-ai.js");
+    const ai = getAI(initializeApp(FB_CFG), {backend: new GoogleAIBackend()});
+    return {ai, getGenerativeModel};
+  })();
+  aiP.catch(() => { aiP = null; });
+  return aiP;
+}
+const b64 = blob => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.onerror = ko; r.readAsDataURL(blob); });
+const aiSample = {
+  limits: async () => ({images: true}),
+  json: async (prompt, opts) => {
+    const {ai, getGenerativeModel} = await aiInit();
+    const parts = [prompt + "\n\nRispondi SOLO con JSON valido, senza testo prima o dopo."];
+    for (const im of ((opts && opts.images) || [])) parts.push({inlineData: {mimeType: im.type || "image/jpeg", data: await b64(im)}});
+    let lastErr = null;
+    for (const m of AI_MODELS){
+      try {
+        const model = getGenerativeModel(ai, {model: m, generationConfig: {responseMimeType: "application/json", temperature: 0.1}});
+        const res = await model.generateContent(parts);
+        let t = res.response.text().trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+        return JSON.parse(t);
+      } catch(e){ lastErr = e; if (!/not found|404|no longer|deprecat|unsupported/i.test(String(e && e.message))) break; }
+    }
+    throw lastErr || new Error("ai");
+  }
+};
+if (!window.claude) window.claude = { use: async n => n === "sample" ? aiSample : n === "downloads" ? { save: async ({filename, data}) => { const u = URL.createObjectURL(data), a = document.createElement("a"); a.href = u; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); } } : null };
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+</script>
+
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#EEF1F0;--card:#fff;--ink:#17232A;--mute:#5E6B72;--line:#D3DAD9;--acc:#0E5A58;--accink:#fff;--warn:#B4540A;--warnbg:#FBEBD9;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111A1D;--card:#1A262A;--ink:#E8EEEE;--mute:#9AA9AE;--line:#2D3C41;--acc:#4FB8B2;--accink:#0B1517;--warn:#F0A25C;--warnbg:#3A2A18;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#111A1D;--card:#1A262A;--ink:#E8EEEE;--mute:#9AA9AE;--line:#2D3C41;--acc:#4FB8B2;--accink:#0B1517;--warn:#F0A25C;--warnbg:#3A2A18;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:520px;margin:0 auto;padding:20px 16px 48px}
+h1,h2{font-family:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;margin:0;font-weight:700;letter-spacing:.01em}
+h1{font-size:32px;line-height:1.1}
+h2{font-size:22px;margin:32px 0 10px}
+.sub{color:var(--mute);margin:6px 0 20px}
+.vh{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.shoot{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:72px;border-radius:14px;background:var(--acc);color:var(--accink);font:700 22px "Barlow Semi Condensed",system-ui,sans-serif;cursor:pointer}
+.shoot:focus-within{outline:3px solid var(--ink);outline-offset:3px}
+#prev{display:block;width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin-top:14px;border:1px solid var(--line)}
+#status{margin:12px 0 0;color:var(--mute);min-height:1.4em}
+#status.err{color:var(--warn)}
+form{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+label.f{display:block;margin-bottom:14px;font-size:14px;color:var(--mute)}
+input[type=text]{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-size:17px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px}
+input[type=text]:focus{outline:3px solid var(--acc);outline-offset:1px}
+#lotto{font-size:24px;font-weight:700;letter-spacing:.04em}
+.bad{border-color:var(--warn)!important;background:var(--warnbg)!important}
+.meta{font-size:14px;color:var(--mute);margin:0 0 14px}
+.row{display:flex;gap:10px}
+button{font:700 18px "Barlow Semi Condensed",system-ui,sans-serif;min-height:52px;padding:0 20px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+button.p{flex:1;background:var(--acc);color:var(--accink);border-color:var(--acc)}
+ul{list-style:none;margin:0;padding:0}
+li{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+li b{display:block;font-size:17px}
+li .l{font:700 20px "Barlow Semi Condensed",system-ui,sans-serif;letter-spacing:.04em;color:var(--acc);margin:2px 0}
+li small{color:var(--mute)}
+.empty{color:var(--mute)}
+.tabs,.seg{display:flex;gap:8px;margin-bottom:18px}.tabs button,.seg button{flex:1}button[aria-pressed="true"]{background:var(--acc);color:var(--accink);border-color:var(--acc)}input[type=number],input[type=date],select{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-size:17px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px}.tr{display:flex;gap:8px;margin-top:4px}.tr input{margin:0}.tr button{width:64px;font-size:22px}.chk{display:flex;gap:12px;align-items:center;font-size:17px;color:var(--ink);margin-bottom:16px}.chk input{width:24px;height:24px;margin:0}#fAbb button.p{width:100%}#aSt{min-height:1.4em;color:var(--mute);margin:0 0 10px}#aSt.err{color:var(--warn)}
+[hidden]{display:none!important}
+#vTemp h1,#vTemp h2,#vTemp h3{font-family:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;margin:0;font-weight:700}
+#vTemp h1{font-size:32px;line-height:1.1}
+#vTemp h2{font-size:22px;margin:30px 0 10px}
+#vTemp h3{font-size:24px}
+#vTemp .sub{color:var(--mute);margin:6px 0 16px}
+#vTemp #t_todo{padding:10px 14px;border-radius:10px;background:var(--warnbg);color:var(--warn);font-weight:600;margin-bottom:14px}
+#vTemp #t_todo.done{background:var(--card);color:var(--ok);border:1px solid var(--line)}
+#vTemp label.f{display:block;font-size:14px;color:var(--mute);margin-bottom:16px}
+#vTemp input,#vTemp textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-size:17px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px}
+#vTemp input:focus,#vTemp textarea:focus,#vTemp button:focus-visible{outline:3px solid var(--acc);outline-offset:1px}
+#vTemp .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+#vTemp .card.out{border-color:var(--warn);border-width:2px}
+#vTemp .head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+#vTemp .lim{font-size:14px;color:var(--mute)}
+#vTemp .st{font-size:14px;margin:4px 0 10px;color:var(--mute)}
+#vTemp .st.ok{color:var(--ok)}
+#vTemp .step{display:flex;gap:8px;align-items:stretch}
+#vTemp .step input{margin:0;text-align:center;font:700 30px "Barlow Semi Condensed",system-ui,sans-serif}
+#vTemp .step button{width:64px;font-size:30px}
+#vTemp button{font:700 18px "Barlow Semi Condensed",system-ui,sans-serif;min-height:52px;padding:0 18px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+#vTemp button.p{width:100%;margin-top:10px;background:var(--acc);color:var(--accink);border-color:var(--acc)}
+#vTemp .warn{color:var(--warn);font-weight:600;margin:10px 0 0}
+#vTemp .card textarea{min-height:70px;margin-top:6px}
+#vTemp ul{list-style:none;margin:0;padding:0}
+#vTemp li{display:flex;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+#vTemp li small{color:var(--mute);display:block}
+#vTemp li .v{font:700 20px "Barlow Semi Condensed",system-ui,sans-serif;white-space:nowrap}
+#vTemp li .v.out{color:var(--warn)}
+#vTemp .empty{color:var(--mute)}
+#vTemp .note{font-size:14px;color:var(--mute);margin-top:24px}
+#vTemp li{background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;margin:0}
+.tabs{flex-wrap:wrap}.tabs button{flex:1 1 30%;padding:0 4px;font-size:16px;line-height:1.1}
+.exp button.p{width:100%;margin-bottom:10px}
+#eSt{min-height:1.4em;color:var(--mute)}#eSt.err{color:var(--warn)}
+:root{--ok:#1E7A3C}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ok:#6FD08C}}
+:root[data-theme="dark"]{--ok:#6FD08C}
+textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-size:17px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px}
+.tk{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.tk b{display:block;font-size:17px}.tk small{display:block;color:var(--mute)}
+.tk .s{margin:8px 0 10px;font-size:14px}.tk .s.ok{color:var(--ok)}.tk .s.late{color:var(--warn);font-weight:600}
+.tk button.p,#fNc button.p{width:100%}
+#nSt{min-height:1.4em;color:var(--mute);margin:0 0 10px}#nSt.err{color:var(--warn)}
+.cq{margin-bottom:14px}.cq>span{display:block;font-size:14px;color:var(--mute);margin-bottom:4px}.cq .seg{margin-bottom:0}
+#vTemp button[aria-pressed="true"]{background:var(--acc);color:var(--accink);border-color:var(--acc)}
+.mg3{display:grid;grid-template-columns:1.1fr 1fr 1.2fr;gap:8px;margin-bottom:8px}.mg3 label.f{margin:0}
+.tk .s.bad{color:var(--warn);font-weight:600}.tk .row{margin-top:8px;flex-wrap:wrap}.tk .row button{flex:1;min-height:44px;font-size:16px}
+#vMag .mgx,#vFc .mgx{min-height:40px;font-size:15px}
+#vMag table,#vFc table{width:100%;border-collapse:collapse;font-size:14px}#vMag td,#vMag th,#vFc td{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left}
+#vMag .best{color:var(--ok);font-weight:700}
+#vFc details{margin-top:8px;font-size:14px;color:var(--mute)}#vFc summary{cursor:pointer;color:var(--ink)}
+#oggi{margin:0 0 16px;border-radius:14px;padding:12px;border:2px solid var(--warn);background:var(--warnbg)}
+#oggi.ok{border:1px solid var(--line);background:var(--card);padding:10px 14px}
+#oggi h2{margin:0 0 8px;font-size:22px;color:var(--warn)}
+#oggi.ok p{margin:0;color:var(--ok);font-weight:700;font-size:17px}
+#oggi button.it{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;min-height:52px;margin-top:8px;padding:8px 14px;text-align:left;font:600 17px system-ui,sans-serif;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px}
+#oggi button.it.late{border:2px solid var(--warn)}
+#oggi button.it small{display:block;font-weight:400;color:var(--mute);font-size:13px}
+.pulse{animation:pls 2.6s ease-out 1;outline:3px solid var(--warn);outline-offset:3px}@keyframes pls{0%,75%{outline-color:var(--warn)}100%{outline-color:transparent}}
+#oggi button.it::after{content:"›";font-size:26px;color:var(--mute)}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+<main>
+<div id="oggi" role="region" aria-label="Da fare oggi"></div>
+<div class="seg" id="areaSeg" role="group" aria-label="Area"><button type="button" id="aHaccp" aria-pressed="true" style="min-height:58px;font-size:22px">HACCP</button><button type="button" id="aMag" aria-pressed="false" style="min-height:58px;font-size:22px">Magazzino e costi</button></div>
+<nav class="tabs"><button type="button" id="tTemp" aria-pressed="false">Temperature</button><button type="button" id="tMerce" aria-pressed="false">Merce in arrivo</button><button type="button" id="tAbb" aria-pressed="false">Abbattimento</button><button type="button" id="tPul" aria-pressed="false">Pulizia</button><button type="button" id="tNc" aria-pressed="false">Non conformità</button><button type="button" id="tMis" aria-pressed="false">Mancanti</button><button type="button" id="tMag" aria-pressed="false">Magazzino</button><button type="button" id="tMenu" aria-pressed="false">Menu</button><button type="button" id="tPrep" aria-pressed="false">Preparazioni</button><button type="button" id="tRic" aria-pressed="false">Ricette</button><button type="button" id="tFc" aria-pressed="false">Food cost</button><button type="button" id="tExp" aria-pressed="false">PDF</button></nav>
+<div id="vox">
+<button type="button" class="p" id="voxBtn" style="width:100%;margin-bottom:10px" hidden>Comando vocale: tocca e parla</button>
+<label class="f" style="margin-bottom:8px">Scrivi o detta il comando (microfono della tastiera)<input id="voxIn" type="text" autocomplete="off" placeholder="es. freezer uno meno ventuno"></label>
+<button type="button" id="voxGo" style="width:100%;margin-bottom:10px">Interpreta il comando</button>
+<p class="meta" id="voxText" hidden></p>
+<div id="voxPanel" hidden></div>
+</div>
+<div id="vMerce">
+<h1>Merce in arrivo</h1>
+<p class="sub">Fotografa l’etichetta: l’app legge il lotto vero, non quello della bolla. Controlla i campi e salva.</p>
+
+<label class="shoot">
+<input id="file" class="vh" type="file" accept="image/*" capture="environment">
+<span id="shootTxt">Fotografa etichetta</span>
+</label>
+<button type="button" id="manuale" style="width:100%;margin-top:10px">Compila a mano, senza foto</button>
+<img id="prev" alt="Etichetta fotografata" hidden>
+<p id="status" role="status"></p>
+
+<form id="form" hidden>
+<p class="meta" id="when"></p>
+<label class="f">Prodotto<input type="text" id="prodotto" autocomplete="off"></label>
+<label class="f">Fornitore (nome dell’azienda, es. DAC S.p.A.)<input type="text" id="fornitore" autocomplete="off" list="fornList"></label>
+<datalist id="fornList"></datalist>
+<p class="meta" id="fHint"></p>
+<label class="f">Lotto<input type="text" id="lotto" autocomplete="off" autocapitalize="characters"></label>
+<label class="f">Scadenza<input type="text" id="scadenza" autocomplete="off" placeholder="GG/MM/AAAA"></label>
+<div class="cq" data-c="tt"><span>Temperatura del mezzo di trasporto</span><div class="seg" role="group"><button type="button" data-v="C" aria-pressed="false">Conforme</button><button type="button" data-v="NC" aria-pressed="false">Non conforme</button></div></div>
+<div class="cq" data-c="ct"><span>Condizioni del mezzo di trasporto</span><div class="seg" role="group"><button type="button" data-v="C" aria-pressed="false">Conforme</button><button type="button" data-v="NC" aria-pressed="false">Non conforme</button></div></div>
+<div class="cq" data-c="cp"><span>Condizioni del prodotto</span><div class="seg" role="group"><button type="button" data-v="C" aria-pressed="false">Conforme</button><button type="button" data-v="NC" aria-pressed="false">Non conforme</button></div></div>
+<label class="f">Operatore<input type="text" id="op" autocomplete="off"></label>
+<div class="row"><button type="button" id="cancel">Annulla</button><button type="submit" class="p">Salva nel registro</button></div>
+</form>
+
+<div id="scBox"></div>
+<h2>Registro di oggi</h2>
+<ul id="list"></ul>
+<p class="empty" id="empty">Nessuna merce registrata oggi.</p>
+</div>
+
+<div id="vAbb" hidden>
+<h1>Abbattimento</h1>
+<p class="sub">Scrivi il prodotto: il lotto si compila da solo dall’ultimo arrivo. Se non è giusto, cancellalo e scrivilo a mano.</p>
+<form id="fAbb">
+<div class="seg" role="group" aria-label="Tipo di abbattimento"><button type="button" id="bPos" aria-pressed="true">Positivo</button><button type="button" id="bNeg" aria-pressed="false">Negativo</button></div>
+<label class="f">Data<input type="date" id="aData"></label>
+<p class="meta" id="aLateHint" hidden>Giorno passato: sul registro comparirà “inserito in ritardo”. Registra solo abbattimenti fatti davvero.</p>
+<label class="f">Prodotto<input type="text" id="aProd" autocomplete="off"></label>
+<div id="aPosBlk" hidden>
+<label class="chk"><input type="checkbox" id="aPosChk" checked> Prima l’ho abbattuto in positivo fino a +4 °C: scrivi anche la scheda positiva</label>
+<div id="aPosFld">
+<label class="f">Temperatura iniziale del positivo (°C)<input type="number" id="aTempPos" step="0.1" inputmode="decimal"></label>
+<div class="cq" id="aConfPos" hidden><span>Positivo: raggiunta la temperatura prevista dal piano HACCP</span><div class="seg" role="group"><button type="button" data-v="Sì" aria-pressed="true">Sì</button><button type="button" data-v="No" aria-pressed="false">No</button></div></div>
+</div>
+</div>
+<label class="f"><span id="aTempLbl">Temperatura iniziale (°C)</span><span class="tr"><input type="number" id="aTemp" step="0.1" inputmode="decimal"><button type="button" id="aSign" aria-label="Cambia segno">±</button></span></label>
+<label class="f">Lotto<input type="text" id="aLot" autocomplete="off" autocapitalize="characters"></label>
+<p class="meta" id="aLotHint"></p>
+<div class="cq" id="aConf" hidden><span id="aConfLbl">Raggiunta la temperatura prevista dal piano HACCP</span><div class="seg" role="group"><button type="button" data-v="Sì" aria-pressed="true">Sì</button><button type="button" data-v="No" aria-pressed="false">No</button></div></div>
+<label class="f">Firma<input type="text" id="aFirma" autocomplete="off"></label>
+<p id="aSt" role="status"></p>
+<button type="submit" class="p">Salva scheda</button>
+</form>
+<h2>Registrati oggi</h2>
+<ul id="aList"></ul>
+<p class="empty" id="aEmpty">Nessun abbattimento registrato oggi.</p>
+</div>
+<div id="vTemp" hidden>
+<h1>Temperature</h1>
+<p class="sub">Registra le temperature dei due freezer. Ogni misura salva ora e operatore.</p>
+<div id="t_todo" role="status"></div>
+<label class="f">Data della misura<input id="t_data" type="date"></label>
+<p class="meta" id="t_lateHint" hidden>Stai inserendo una misura per un giorno passato: sul registro comparirà la dicitura “inserita in ritardo”. Inserisci solo misure che hai davvero preso.</p>
+<label class="f">Il tuo nome<input id="t_op" type="text" autocomplete="off"></label>
+<div id="t_cards"></div>
+<h2>Ultime registrazioni</h2>
+<ul id="t_list"></ul>
+<p class="empty" id="t_empty">Ancora nessuna misura registrata.</p>
+<p class="note">Limite usato: freezer fino a −18 °C. I frigoriferi non sono qui perché registrano da soli. Confronta il limite con il piano HACCP.</p>
+</div>
+<div id="vPul" hidden>
+<h1>Pulizia e sanificazione</h1>
+<p class="sub">Segna gli interventi fatti. Firma e orario si registrano da soli.</p>
+<div class="seg" role="group" aria-label="Reparto"><button type="button" id="rSala" aria-pressed="true">Sala e servizi</button><button type="button" id="rCuc" aria-pressed="false">Cucina</button></div>
+<label class="f">Data<input type="date" id="pData"></label>
+<p id="pDue" hidden style="color:var(--warn);font-weight:600;margin:0 0 12px"></p>
+<button type="button" class="p" id="pAll" style="width:100%;margin-bottom:14px">Giornalieri fatti: sala e cucina</button>
+<div id="pTasks"></div>
+<p class="meta">Prodotti utilizzati: detergente neutro o alcalino, disinfettante a base di cloro/alcol.</p>
+</div>
+<div id="vNc" hidden>
+<h1>Non conformità</h1>
+<p class="sub">Scrivi il problema e come l’hai risolto. Chiudi la scheda quando è risolta.</p>
+<form id="fNc">
+<label class="f">Data<input type="date" id="nData"></label>
+<label class="f">Descrizione<textarea id="nDesc" rows="3"></textarea></label>
+<label class="f">Risoluzione<textarea id="nRis" rows="3"></textarea></label>
+<p id="nSt" role="status"></p>
+<button type="submit" class="p">Salva</button>
+</form>
+<h2>Ultime non conformità</h2>
+<ul id="nList"></ul>
+<p class="empty" id="nEmpty">Nessuna non conformità registrata.</p>
+</div>
+<div id="vMis" hidden>
+<h1>Giorni mancanti</h1>
+<p class="sub">Giorni senza registrazione degli ultimi 30 giorni. Se hai fatto la misura o la pulizia ma non l’hai segnata, inseriscila in ritardo. Se non è stata fatta, segna che non è stata eseguita: resta scritto con il motivo.</p>
+<label class="f">Motivo<input type="text" id="mMot" value="Dimenticanza" autocomplete="off"></label>
+<div id="mList"></div>
+<p class="empty" id="mEmpty">Nessun giorno mancante.</p>
+</div>
+<div id="vMag" hidden>
+<h1>Magazzino</h1>
+<p class="sub">Carica le bolle o le fatture dei fornitori: l’app tiene giacenze, prezzi e lista della spesa.</p>
+<div class="seg" role="group" aria-label="Sezioni magazzino" style="flex-wrap:wrap"><button type="button" id="mgB_g" aria-pressed="true" style="flex:1 1 30%">Giacenze</button><button type="button" id="mgB_c" aria-pressed="false" style="flex:1 1 30%">Carico</button><button type="button" id="mgB_p" aria-pressed="false" style="flex:1 1 30%">Prezzi</button><button type="button" id="mgB_s" aria-pressed="false" style="flex:1 1 30%">Spesa</button><button type="button" id="mgB_f" aria-pressed="false" style="flex:1 1 30%">Fornitori</button></div>
+<datalist id="mgProdList"></datalist>
+<div id="mg_g">
+<label class="f">Cerca prodotto<input type="text" id="mg_q" autocomplete="off"></label>
+<div id="mg_gl"></div>
+<p class="empty" id="mg_empty">Il magazzino è vuoto: carica una bolla nella scheda Carico.</p>
+</div>
+<div id="mg_c" hidden>
+<label class="shoot"><input id="mg_file" class="vh" type="file" accept="image/*" capture="environment"><span>Fotografa bolla o fattura</span></label>
+<label class="shoot" style="margin-top:10px;min-height:56px;font-size:19px;background:var(--card);color:var(--ink);border:1px solid var(--line)"><input id="mg_gal" class="vh" type="file" accept="image/*"><span>Scegli dalla galleria</span></label>
+<button type="button" id="mg_man" style="width:100%;margin-top:10px">Compila a mano, senza foto</button>
+<p id="mg_st" role="status" class="meta" style="margin-top:12px;min-height:1.4em"></p>
+<div id="mg_rev"></div>
+</div>
+<div id="mg_p" hidden>
+<label class="f">Prodotto<input type="text" id="mg_pq" autocomplete="off" list="mgProdList"></label>
+<div id="mg_pd"></div>
+<div id="mg_pl"></div>
+</div>
+<div id="mg_f" hidden>
+<div id="mg_ftop"><button type="button" class="p" id="mg_fnew" style="width:100%;margin-bottom:12px">Nuovo fornitore</button><label class="f">Cerca fornitore<input type="text" id="mg_fq" autocomplete="off"></label></div>
+<div id="mg_fl"></div>
+<div id="mg_ff" hidden></div>
+</div>
+<div id="mg_s" hidden>
+<p class="meta">Prodotti sotto la scorta minima (la imposti da Giacenze, con “Minima”) e prodotti segnati “Da ordinare” dal Menu.</p>
+<div id="mg_sl"></div>
+</div>
+</div>
+
+<div id="vMenu" hidden>
+<h1>Menu</h1>
+<p class="sub">I piatti del menu attuale e i prodotti da controllare per il riordino.</p>
+<div class="seg" role="group" aria-label="Sezioni menu"><button type="button" id="mnB_p" aria-pressed="true">Piatti</button><button type="button" id="mnB_c" aria-pressed="false">Da controllare</button></div>
+<div id="mn_p"></div>
+<div id="mn_c" hidden></div>
+</div>
+
+<div id="vPrep" hidden>
+<h1>Preparazioni</h1>
+<p class="sub">Cosa preparare ogni giorno, in base ai piatti del menu e al tempo che hai (4:30–6:30).</p>
+<div class="seg" role="group" aria-label="Sezioni preparazioni"><button type="button" id="prB_o" aria-pressed="true">Oggi</button><button type="button" id="prB_p" aria-pressed="false">Piano</button><button type="button" id="prB_s" aria-pressed="false">Date e tempi</button></div>
+<div id="pr_o"></div>
+<div id="pr_p" hidden></div>
+<div id="pr_s" hidden></div>
+</div>
+
+<div id="vRic" hidden>
+<h1>Ricette</h1>
+<p class="sub">Scrivi ingredienti in grammi e procedimento. Il costo si calcola dall’ultimo prezzo pagato in magazzino.</p>
+<div id="ric_top"><button type="button" class="p" id="ric_new" style="width:100%;margin-bottom:10px">Nuova ricetta</button><button type="button" id="ric_imp_btn" style="width:100%;margin-bottom:14px">Importa ricetta (da sito, testo o foto)</button></div>
+<div id="ric_imp" hidden>
+<h2 style="margin-top:0">Importa ricetta</h2>
+<label class="f">Cerca per nome (es. tiramisù)<input type="text" id="imp_n" autocomplete="off"></label>
+<button type="button" id="imp_gn" style="width:100%;margin-bottom:6px">Proponi la ricetta classica</button>
+<p class="meta">L’app non può aprire siti: la proposta è scritta da Claude, non copiata da Giallo Zafferano. Per quella del sito, copia il testo della ricetta e incollalo qui sotto, oppure fai una foto o uno screenshot.</p>
+<label class="f">Testo della ricetta<textarea id="imp_t" rows="8"></textarea></label>
+<button type="button" class="p" id="imp_go" style="width:100%">Leggi il testo</button>
+<label class="shoot" style="margin-top:10px;min-height:56px;font-size:19px;background:var(--card);color:var(--ink);border:1px solid var(--line)"><input id="imp_f" class="vh" type="file" accept="image/*"><span>Foto o screenshot dalla galleria</span></label>
+<label class="shoot" style="margin-top:10px;min-height:56px;font-size:19px;background:var(--card);color:var(--ink);border:1px solid var(--line)"><input id="imp_c" class="vh" type="file" accept="image/*" capture="environment"><span>Fotografa la ricetta</span></label>
+<p id="imp_st" role="status" class="meta" style="margin-top:12px;min-height:1.4em"></p>
+<button type="button" id="imp_x" style="width:100%">Annulla</button>
+</div>
+<div id="ric_list"></div>
+<div id="ric_form" hidden></div>
+</div>
+
+<div id="vFc" hidden>
+<h1>Food cost</h1>
+<p class="sub">Costo di ogni piatto e percentuale sul prezzo di vendita. Le ricette si scrivono nella scheda Ricette.</p>
+<div class="row"><label class="f" style="flex:1">Obiettivo food cost (%)<input type="number" id="fc_target" step="1" inputmode="decimal"></label><label class="f" style="flex:1">IVA sulla vendita (%)<input type="number" id="fc_iva" step="1" inputmode="decimal"></label></div>
+<label class="chk"><input type="checkbox" id="fc_onlym"> Solo i piatti del menu</label>
+<div id="fc_list"></div>
+</div>
+
+<div id="vExp" hidden>
+<h1>PDF dei registri</h1>
+<p class="sub">Scegli il mese e salva il registro da stampare o mostrare all’ASL.</p>
+<label class="f">Periodo<select id="eMese"></select></label>
+<div class="exp">
+<button type="button" class="p" data-k="temp">PDF temperature</button>
+<button type="button" class="p" data-k="merce">PDF merce in arrivo</button>
+<button type="button" class="p" data-k="pos">PDF abbattimento positivo</button>
+<button type="button" class="p" data-k="neg">PDF abbattimento negativo</button>
+<button type="button" class="p" data-k="pulsala">PDF pulizia sala e servizi</button>
+<button type="button" class="p" data-k="pulcucina">PDF pulizia cucina</button>
+<button type="button" class="p" data-k="nc">PDF non conformità</button>
+</div>
+<p id="eSt" role="status"></p>
+</div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const KEY = "haccp-trac-v1", OPKEY = "haccp-op";
+let sample = null, entries = [];
+
+function load(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } }
+function save(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+entries = load(KEY, []);
+$("op").value = load(OPKEY, "");
+
+(async () => { try { sample = await claude.use("sample"); } catch(e){ sample = null; } })();
+
+const fmt = t => new Date(t).toLocaleString("it-IT", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
+function status(msg, err){ const s = $("status"); s.textContent = msg; s.className = err ? "err" : ""; }
+
+function render(){
+  const today = new Date().toDateString();
+  const items = entries.filter(e => new Date(e.t).toDateString() === today).sort((a,b) => b.t - a.t);
+  const ul = $("list"); ul.textContent = "";
+  items.forEach(e => {
+    const li = document.createElement("li");
+    const b = document.createElement("b"); b.textContent = e.prodotto || "Prodotto senza nome";
+    const l = document.createElement("div"); l.className = "l"; l.textContent = "Lotto " + e.lotto;
+    const s = document.createElement("small");
+    s.textContent = [e.fornitore, e.scadenza ? "scade " + e.scadenza : "", fmt(e.t), e.op, (e.tt === "NC" || e.ct === "NC" || e.cp === "NC") ? "NON CONFORME" : ""].filter(Boolean).join(", ");
+    li.append(b, l, s); ul.append(li);
+  });
+  $("empty").hidden = items.length > 0;
+  fillForn(); renderScad();
+}
+function renderScad(){
+  const box = $("scBox"); box.textContent = "";
+  const all = scadList(); if (!all.length) return;
+  const urg = all.filter(x => x.left != null && x.left <= 7), rest = all.filter(x => !(x.left != null && x.left <= 7));
+  const mk = x => {
+    const e = x.e, li = document.createElement("div"); li.className = "tk";
+    const late = x.left != null && x.left < 0, soon = x.left != null && x.left <= 2;
+    const b = document.createElement("b"); b.textContent = e.prodotto || "Prodotto senza nome";
+    const st = document.createElement("div"); st.className = "s " + (soon ? "late" : "ok");
+    st.textContent = x.d ? (late ? "SCADUTO il " : x.left === 0 ? "Scade OGGI, " : x.left === 1 ? "Scade domani, " : "Scade tra " + x.left + " giorni, ") + dmy(x.d) : "Scadenza da controllare: " + e.scadenza;
+    const sm = document.createElement("small"); sm.textContent = [e.lotto ? "lotto " + e.lotto : "", e.fornitore, "arrivato il " + dmy(ymd(e.t))].filter(Boolean).join(" · ");
+    const fin = v => { const d = load(SCK, {}); d[e.t] = v; save(SCK, d); renderScad(); };
+    const panel = document.createElement("div"); panel.style.marginTop = "8px"; panel.hidden = true;
+    const hint = document.createElement("small"); hint.textContent = "Tocca per scegliere cosa è successo a questo prodotto."; hint.style.cssText = "display:block;margin-top:6px";
+    const row = document.createElement("div"); row.className = "row"; row.style.marginTop = "8px";
+    const mkb = (tx, fn) => { const bt = document.createElement("button"); bt.type = "button"; bt.textContent = tx; bt.onclick = fn; return bt; };
+    // Buttato: NC + scarico magazzino
+    const bq = document.createElement("div"); bq.hidden = true; bq.style.marginTop = "8px";
+    const qlab = document.createElement("label"); qlab.className = "f"; qlab.textContent = "Quantità buttata (facoltativa, per toglierla dal magazzino)";
+    const qin = document.createElement("input"); qin.type = "number"; qin.step = "any"; qin.inputMode = "decimal"; qlab.append(qin);
+    const qu = document.createElement("select"); ["kg", "g", "l", "ml", "pz"].forEach(u => { const o = document.createElement("option"); o.value = u; o.textContent = u; qu.append(o); });
+    const qmsg = document.createElement("small"); qmsg.style.cssText = "display:block;color:var(--warn)";
+    const qok = mkb("Conferma: buttato", () => {
+      const v = parseFloat(qin.value); let extra = "";
+      if (qin.value !== "" && v > 0 && window.magApi && magApi.scarico){ const res = magApi.scarico(e.prodotto || "", v, qu.value, "buttato (scaduto)"); if (res !== "ok"){ qmsg.textContent = "Non l’ho tolto dal magazzino: " + res + ". Premi di nuovo per registrare comunque."; if (!qok.dataset.again){ qok.dataset.again = "1"; return; } } else extra = " Tolti " + v + " " + qu.value + " dal magazzino."; }
+      const today = ymd(Date.now());
+      addNc(today, (x.left != null && x.left < 0 ? "Prodotto scaduto, buttato: " : "Prodotto buttato prima della scadenza: ") + (e.prodotto || "?") + (e.lotto ? " (lotto " + e.lotto + ")" : "") + (x.d ? ", scadenza " + dmy(x.d) : ""), "Prodotto eliminato." + extra);
+      fin("buttato");
+    });
+    qok.className = "p"; bq.append(qlab, qu, qmsg, qok);
+    row.append(
+      mkb("Buttato", () => { bq.hidden = !bq.hidden; }),
+      mkb("Esaurito", () => fin("esaurito")),
+      mkb("Abbattuto", () => {
+        pendingAbb = e.t; show("a"); setTipo("Negativo"); $("aData").value = ymd(Date.now()); lateHint();
+        $("aProd").value = e.prodotto || ""; $("aProd").dispatchEvent(new Event("input"));
+        $("aLot").value = e.lotto || ""; lotAuto = false; $("aLotHint").textContent = e.lotto ? "Lotto preso dalla merce in arrivo." : "";
+        $("aTempPos").focus(); aMsg("Scheda precompilata con prodotto, lotto e data di oggi. Scrivi le temperature lette con la sonda e salva.", false); window.scrollTo(0, 0);
+      }));
+    panel.append(row, bq);
+    const head = document.createElement("button"); head.type = "button"; head.textContent = "Cosa ne faccio? ▾"; head.style.cssText = "width:100%;margin-top:8px"; head.onclick = () => { panel.hidden = !panel.hidden; };
+    li.append(b, st, sm, head, panel); return li;
+  };
+  const h = document.createElement("h2"); h.textContent = "Scadenze della merce"; box.append(h);
+  if (urg.length) urg.forEach(x => box.append(mk(x))); else { const p = document.createElement("p"); p.className = "meta"; p.textContent = "Niente in scadenza nei prossimi 7 giorni."; box.append(p); }
+  if (rest.length){ const d = document.createElement("details"); const sm = document.createElement("summary"); sm.textContent = "Tutte le altre scadenze (" + rest.length + ")"; d.append(sm); rest.forEach(x => d.append(mk(x))); box.append(d); }
+}
+
+async function shrink(file){
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas");
+  c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  return new Promise(r => c.toBlob(r, "image/jpeg", 0.85));
+}
+
+const cond = {tt:"", ct:"", cp:""};
+function resetCond(){ for (const k in cond) cond[k] = ""; document.querySelectorAll(".cq[data-c]").forEach(q => q.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", "false"))); }
+document.querySelectorAll("#form .cq").forEach(q => q.querySelectorAll("button").forEach(b => { b.onclick = () => { cond[q.dataset.c] = b.dataset.v; q.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); }; }));
+const CLAB = {tt:"temperatura del mezzo di trasporto", ct:"condizioni del mezzo di trasporto", cp:"condizioni del prodotto"};
+function lastForn(){ const e = entries.slice().sort((a, b) => b.t - a.t).find(x => (x.fornitore || "").trim()); return e ? e.fornitore.trim() : ""; }
+function fillForn(){ const dl = $("fornList"); dl.textContent = ""; [...new Set(entries.map(e => (e.fornitore || "").trim()).filter(Boolean))].forEach(f => { const o = document.createElement("option"); o.value = f; dl.append(o); }); }
+$("fornitore").addEventListener("input", () => { $("fHint").textContent = ""; });
+$("manuale").onclick = () => { $("prev").hidden = true; $("file").value = ""; status(""); openForm({}); $("prodotto").focus(); };
+function openForm(d){
+  resetCond();
+  $("prodotto").value = d.prodotto || ""; $("fornitore").value = d.fornitore || ""; $("fHint").textContent = "";
+  if (!d.fornitore){ const lf = lastForn(); if (lf){ $("fornitore").value = lf; $("fHint").textContent = "Fornitore non letto dall’etichetta: ho messo l’ultimo usato, controlla che sia giusto."; } }
+  else $("fHint").textContent = "Fornitore letto dall’etichetta: controlla che sia l’azienda che consegna.";
+  $("lotto").value = d.lotto || ""; $("scadenza").value = d.scadenza || "";
+  $("lotto").classList.toggle("bad", !d.lotto);
+  $("when").textContent = "Arrivo: " + fmt(Date.now()) + " (registrato in automatico)";
+  $("form").hidden = false;
+}
+
+$("file").addEventListener("change", async ev => {
+  const f = ev.target.files[0]; if (!f) return;
+  $("form").hidden = true;
+  let blob;
+  try { blob = await shrink(f); } catch(e){ status("Non riesco ad aprire la foto. Riprova.", true); return; }
+  $("prev").src = URL.createObjectURL(blob); $("prev").hidden = false;
+  $("shootTxt").textContent = "Fotografa un’altra etichetta";
+  if (!sample){ status("Lettura automatica non disponibile: compila i campi a mano.", true); openForm({}); return; }
+  status("Sto leggendo l’etichetta…");
+  try {
+    const lim = await sample.limits();
+    if (!lim.images) throw new Error("noimg");
+    const prompt = "Sei un assistente per la tracciabilità HACCP in una cucina italiana. L’immagine è l’etichetta di un prodotto alimentare. Rispondi SOLO con un oggetto JSON con le chiavi: prodotto, fornitore, lotto, scadenza. “lotto” è il numero di lotto stampato sull’etichetta (spesso dopo Lotto, L., Lot o LOT), non il codice articolo né il numero di bolla. “fornitore” è il nome dell’azienda che compare sull’etichetta come distributore o venditore (per esempio dopo “Distribuito da” o “Confezionato per”); se non c’è, usa il nome del produttore o dell’azienda che compare sull’etichetta; se non c’è nessun nome usa una stringa vuota. “scadenza” nel formato GG/MM/AAAA se leggibile. Se un dato non è leggibile usa una stringa vuota. Non inventare nulla.";
+    const d = await sample.json(prompt, {images: [blob], modelTier: "quick"});
+    openForm(d || {});
+    status(d && d.lotto ? "Letto. Controlla che il lotto sia giusto." : "Lotto non leggibile: inseriscilo a mano o rifai la foto.", !(d && d.lotto));
+  } catch(e){
+    status("Lettura non riuscita: compila i campi a mano o rifai la foto.", true); openForm({});
+  }
+});
+
+$("lotto").addEventListener("input", () => $("lotto").classList.toggle("bad", !$("lotto").value.trim()));
+
+$("form").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const lotto = $("lotto").value.trim();
+  if (!lotto){ $("lotto").classList.add("bad"); $("lotto").focus(); status("Il lotto è obbligatorio per la tracciabilità.", true); return; }
+  if (!cond.tt || !cond.ct || !cond.cp){ status("Indica se temperatura del mezzo, condizioni del mezzo e condizioni del prodotto sono conformi.", true); return; }
+  const op = $("op").value.trim(); save(OPKEY, op);
+  const prodNome = $("prodotto").value.trim(), ncList = Object.keys(cond).filter(k => cond[k] === "NC");
+  entries.push({t: Date.now(), prodotto: prodNome, fornitore: $("fornitore").value.trim(), lotto, scadenza: $("scadenza").value.trim(), op, tt: cond.tt, ct: cond.ct, cp: cond.cp});
+  ncList.forEach(k => addNc(ymd(Date.now()), "Merce in arrivo: " + (prodNome || "prodotto") + " (lotto " + lotto + "), " + CLAB[k] + " non conforme", ""));
+  save(KEY, entries);
+  $("form").hidden = true; $("prev").hidden = true; $("file").value = ""; $("shootTxt").textContent = "Fotografa etichetta";
+  status(ncList.length ? "Salvato. Ho aperto una non conformità: completa la risoluzione nella scheda Non conformità." : "Salvato nel registro."); render();
+});
+$("cancel").addEventListener("click", () => { $("form").hidden = true; $("prev").hidden = true; $("file").value = ""; status(""); });
+
+// --- Abbattimento ---
+const AKEY = "haccp-abb-v1";
+let abb = load(AKEY, []), tipo = "Positivo";
+const ymd = t => { const d = new Date(t); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+const dmy = s => s.split("-").reverse().join("/");
+const CLOSED = load("haccp-closed-v1", [2]);
+const isClosed = s => CLOSED.includes(new Date(s + "T12:00:00").getDay());
+const SCK = "haccp-scad-v1", p2 = n => String(n).padStart(2, "0");
+let pendingAbb = null;
+function parseScad(s){
+  s = (s || "").trim(); let m;
+  if ((m = /(\d{4})-(\d{2})-(\d{2})/.exec(s))) return m[0];
+  if ((m = /(\d{1,2})[\/.\-\s](\d{1,2})[\/.\-\s](\d{2,4})/.exec(s))){ let y = +m[3]; if (y < 100) y += 2000; const d = +m[1], mo = +m[2]; if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) return y + "-" + p2(mo) + "-" + p2(d); }
+  if ((m = /(\d{1,2})[\/.\-](\d{4})/.exec(s)) && +m[1] >= 1 && +m[1] <= 12) return m[2] + "-" + p2(+m[1]) + "-" + p2(new Date(+m[2], +m[1], 0).getDate());
+  return null;
+}
+function scadList(){
+  const today = ymd(Date.now()), done = load(SCK, {});
+  return load("haccp-trac-v1", []).filter(e => (e.scadenza || "").trim() && !done[e.t]).map(e => { const d = parseScad(e.scadenza); return {e, d, left: d ? Math.round((new Date(d + "T12:00:00") - new Date(today + "T12:00:00")) / 864e5) : null}; }).sort((a, b) => (a.d || "9999") < (b.d || "9999") ? -1 : 1);
+}
+let lastH = "t", lastM = "g";
+const HID = ["tTemp", "tMerce", "tAbb", "tPul", "tNc", "tMis", "tExp"], MID = ["tMag", "tMenu", "tPrep", "tRic", "tFc"];
+const VIEWS = {t:["vTemp","tTemp"], m:["vMerce","tMerce"], a:["vAbb","tAbb"], p:["vPul","tPul"], n:["vNc","tNc"], x:["vMis","tMis"], g:["vMag","tMag"], u:["vMenu","tMenu"], q:["vPrep","tPrep"], r:["vRic","tRic"], f:["vFc","tFc"], e:["vExp","tExp"]};
+function show(w){
+  const inM = "gurqf".includes(w); if (inM) lastM = w; else lastH = w;
+  HID.forEach(i => { $(i).hidden = inM; }); MID.forEach(i => { $(i).hidden = !inM; });
+  $("vox").hidden = inM; $("aHaccp").setAttribute("aria-pressed", !inM); $("aMag").setAttribute("aria-pressed", inM);
+  for (const k in VIEWS){ $(VIEWS[k][0]).hidden = k !== w; $(VIEWS[k][1]).setAttribute("aria-pressed", k === w); $(VIEWS[k][1]).onclick = () => show(k); }
+  if (w === "a") prepAbb();
+  if (w === "e") prepExp();
+  if (w === "p") renderPul();
+  if (w === "n") renderNc();
+  if (w === "x") renderMis();
+  if (w === "g" && window.magApi) magApi.render();
+  if (w === "f" && window.fcApi) fcApi.render();
+  if (w === "u" && window.menuApi) menuApi.render();
+  if (window.todayApi) todayApi.render();
+  if (w === "r" && window.ricApi) ricApi.render();
+  if (w === "q" && window.prepApi) prepApi.render();
+}
+$("aHaccp").onclick = () => show(lastH); $("aMag").onclick = () => show(lastM);
+let abConf = "Sì", posConf = "Sì", tempAuto = false;
+function syncPos(){
+  const neg = tipo === "Negativo", on = neg && $("aPosChk").checked;
+  $("aPosBlk").hidden = !neg; $("aPosFld").hidden = !on;
+  $("aTempLbl").textContent = on ? "Temperatura iniziale del negativo (°C), di solito +4" : "Temperatura iniziale (°C)";
+  if (on && $("aTemp").value === ""){ $("aTemp").value = "4"; tempAuto = true; }
+  if (!on && tempAuto){ $("aTemp").value = ""; tempAuto = false; }
+}
+$("aPosChk").onchange = syncPos;
+$("aTemp").addEventListener("input", () => { tempAuto = false; });
+$("aConfPos").querySelectorAll("button").forEach(b => { b.onclick = () => { posConf = b.dataset.v; $("aConfPos").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); }; });
+function setTipo(t){ tipo = t; $("aConfLbl").textContent = t === "Negativo" ? "Raggiunti −18 °C al cuore entro 4 ore" : "Raggiunta la temperatura prevista dal piano HACCP"; $("bPos").setAttribute("aria-pressed", t === "Positivo"); $("bNeg").setAttribute("aria-pressed", t === "Negativo"); syncPos(); }
+$("bPos").onclick = () => setTipo("Positivo"); $("bNeg").onclick = () => setTipo("Negativo");
+$("aConf").querySelectorAll("button").forEach(b => { b.onclick = () => { abConf = b.dataset.v; $("aConf").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); }; });
+$("aSign").onclick = () => { tempAuto = false; const v = parseFloat($("aTemp").value); if (!isNaN(v)) $("aTemp").value = -v; };
+function lateHint(){ $("aLateHint").hidden = !$("aData").value || $("aData").value >= ymd(Date.now()); }
+$("aData").addEventListener("change", lateHint);
+function prepAbb(){
+  if (!$("aData").value) $("aData").value = ymd(Date.now());
+  $("aData").max = ymd(Date.now()); lateHint();
+  if (!$("aFirma").value) $("aFirma").value = load(OPKEY, "") || "Ivan Torrice";
+}
+const norm = x => (x || "").toLowerCase().trim();
+let lotAuto = true;
+function findLot(name){
+  const n = norm(name); if (n.length < 2) return null;
+  const all = entries.slice().sort((a, b) => b.t - a.t);
+  return all.find(e => norm(e.prodotto) === n) || all.find(e => norm(e.prodotto).includes(n) || n.includes(norm(e.prodotto)) && norm(e.prodotto).length > 1) || all.find(e => n.length > 4 && norm(e.prodotto).split(/\s+/).some(wd => wd.length > 4 && wd.slice(0, -1) === n.slice(0, -1))) || null;
+}
+function autoLot(){
+  const e = findLot($("aProd").value);
+  if (lotAuto){ $("aLot").value = e ? e.lotto : ""; }
+  $("aLotHint").textContent = e && lotAuto ? "Lotto preso dall’ultimo arrivo di " + (e.prodotto || "prodotto") + " (" + fmt(e.t) + "). Se non è quello giusto, cancellalo e scrivi a mano." : "";
+}
+$("aProd").addEventListener("input", () => { lotAuto = true; autoLot(); });
+$("aLot").addEventListener("input", () => { lotAuto = false; $("aLotHint").textContent = ""; });
+function aMsg(m, err){ $("aSt").textContent = m; $("aSt").className = err ? "err" : ""; }
+$("fAbb").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const data = $("aData").value, prodotto = $("aProd").value.trim(), temp = parseFloat($("aTemp").value), firma = $("aFirma").value.trim();
+  if (!data || !prodotto || isNaN(temp) || !firma){ aMsg("Compila data, prodotto, temperatura e firma.", true); return; }
+  if (data > ymd(Date.now())){ aMsg("La data non può essere futura.", true); return; }
+  if (!abConf){ aMsg("Indica se l’abbattimento è conforme.", true); return; }
+  const lotto = $("aLot").value.trim(), conf = abConf, withPos = tipo === "Negativo" && $("aPosChk").checked;
+  let tPos = NaN;
+  if (withPos){ tPos = parseFloat($("aTempPos").value); if (isNaN(tPos)){ aMsg("Inserisci la temperatura iniziale del positivo.", true); return; } }
+  if (withPos){
+    abb.push({t: Date.now() - 1, data, tipo: "Positivo", prodotto, temp: tPos, lotto, firma, conf: posConf});
+    if (posConf === "No") addNc(data, "Abbattimento positivo non conforme: " + prodotto + (lotto ? " (lotto " + lotto + ")" : ""), "");
+  }
+  abb.push({t: Date.now(), data, tipo, prodotto, temp, lotto, firma, conf});
+  if (pendingAbb != null && tipo === "Negativo"){ const dn = load(SCK, {}); dn[pendingAbb] = "abbattuto"; save(SCK, dn); pendingAbb = null; renderScad(); }
+  if (conf === "No") addNc(data, "Abbattimento " + tipo.toLowerCase() + " non conforme: " + prodotto + (lotto ? " (lotto " + lotto + ")" : ""), "");
+  save(AKEY, abb);
+  $("aProd").value = ""; $("aTemp").value = ""; $("aLot").value = ""; $("aLotHint").textContent = ""; lotAuto = true; $("aData").value = ymd(Date.now()); lateHint();
+  $("aTempPos").value = ""; posConf = "Sì"; tempAuto = false; $("aConfPos").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === "Sì"))); syncPos();
+  abConf = "Sì"; $("aConf").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === "Sì")));
+  aMsg(conf === "No" ? "Scheda salvata. Ho aperto una non conformità: completa la risoluzione nella scheda Non conformità." : (withPos ? "Salvate due schede: abbattimento positivo e negativo." : tipo === "Negativo" && temp < 65 ? "Scheda salvata. Attenzione: sul vostro foglio la temperatura di inizio è 65 °C o più, controlla il valore." : "Scheda salvata.")); renderAbb();
+});
+function renderAbb(){
+  const oggi = ymd(Date.now());
+  const items = abb.filter(e => ymd(e.t) === oggi).sort((a, b) => b.t - a.t);
+  const ul = $("aList"); ul.textContent = "";
+  items.forEach(e => {
+    const li = document.createElement("li");
+    const b = document.createElement("b"); b.textContent = e.prodotto;
+    const l = document.createElement("div"); l.className = "l";
+    l.textContent = e.tipo + ", da " + e.temp.toLocaleString("it-IT", {maximumFractionDigits: 1}) + " °C" + (e.lotto ? ", lotto " + e.lotto : "") + (e.conf ? ", conforme: " + e.conf : "");
+    const s = document.createElement("small"); s.textContent = dmy(e.data) + (e.data !== ymd(e.t) ? " (inserito in ritardo)" : "") + ", " + new Date(e.t).toLocaleTimeString("it-IT", {hour: "2-digit", minute: "2-digit"}) + ", " + e.firma;
+    li.append(b, l, s); ul.append(li);
+  });
+  $("aEmpty").hidden = items.length > 0;
+}
+renderAbb();
+render();
+
+(function(){
+
+const $ = id => document.getElementById(id);
+const DEV = [
+  {id:"z1", n:"Freezer 1", min:null, max:-18, start:-20},
+  {id:"z2", n:"Freezer 2", min:null, max:-18, start:-20}
+];
+const KEY = "haccp-temp-v1", OPKEY = "haccp-op";
+function load(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } }
+function save(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+let entries = load(KEY, []);
+$("t_op").value = load(OPKEY, "") || "Ivan Torrice";
+$("t_op").addEventListener("change", () => save(OPKEY, $("t_op").value.trim()));
+
+const num = v => v.toLocaleString("it-IT", {maximumFractionDigits:1});
+const hm = t => new Date(t).toLocaleTimeString("it-IT", {hour:"2-digit", minute:"2-digit"});
+const dm = t => new Date(t).toLocaleDateString("it-IT", {day:"2-digit", month:"2-digit"});
+const isToday = t => new Date(t).toDateString() === new Date().toDateString();
+const isOut = (d, v) => (d.min !== null && v < d.min) || (d.max !== null && v > d.max);
+const limTxt = d => d.min !== null ? "da " + num(d.min) + " a " + num(d.max) + " °C" : "fino a " + num(d.max) + " °C";
+const todayS = () => ymd(Date.now());
+const dayOf = e => e.data || ymd(e.t);
+const selDay = () => $("t_data").value || todayS();
+const last = id => entries.filter(e => e.dev === id && e.v !== null && e.v !== undefined).sort((a,b) => dayOf(b) < dayOf(a) ? -1 : dayOf(b) > dayOf(a) ? 1 : b.t - a.t)[0];
+
+function build(){
+  const box = $("t_cards"); box.textContent = "";
+  DEV.forEach(d => {
+    const day = selDay(), l = last(d.id), lDay = entries.filter(e => e.dev === d.id && e.v !== null && e.v !== undefined && dayOf(e) === day).sort((a,b) => b.t - a.t)[0], today = !!lDay;
+    const c = document.createElement("div"); c.className = "card"; c.dataset.dev = d.id;
+    const head = document.createElement("div"); head.className = "head";
+    const h = document.createElement("h3"); h.textContent = d.n;
+    const lim = document.createElement("span"); lim.className = "lim"; lim.textContent = "limite " + limTxt(d);
+    head.append(h, lim);
+    const st = document.createElement("p"); st.className = "st";
+    if (today){ st.textContent = (day === todayS() ? "Oggi" : dmy(day)) + (lDay.late ? ", inserita in ritardo" : " alle " + hm(lDay.t)) + ": " + num(lDay.v) + " °C" + (lDay.op ? ", " + lDay.op : ""); st.classList.add(lDay.out ? "x" : "ok"); }
+    else st.textContent = day === todayS() ? "Non ancora registrato oggi" : "Non ancora registrato il " + dmy(day);
+    const row = document.createElement("div"); row.className = "step";
+    const minus = document.createElement("button"); minus.type = "button"; minus.textContent = "−"; minus.setAttribute("aria-label", "Meno 1 grado");
+    const inp = document.createElement("input"); inp.type = "number"; inp.step = "0.1"; inp.inputMode = "decimal";
+    inp.value = l ? l.v : d.start; inp.setAttribute("aria-label", "Temperatura di " + d.n);
+    const plus = document.createElement("button"); plus.type = "button"; plus.textContent = "+"; plus.setAttribute("aria-label", "Più 1 grado");
+    row.append(minus, inp, plus);
+    const msg = document.createElement("p"); msg.className = "warn"; msg.hidden = true;
+    const act = document.createElement("textarea"); act.placeholder = "Azione correttiva: scegli sopra o scrivi qui"; act.hidden = true;
+    const chips = document.createElement("div"); chips.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"; chips.hidden = true;
+    ["Ripristino condizioni igieniche", "Intervento straordinario di pulizia e sanificazione", "Intervento straordinario di manutenzione", "Ripristino temperature idonee", "Trasferimento in frigorifero idoneo", "Eliminazione prodotti deteriorati"].forEach(tx => {
+      const cb = document.createElement("button"); cb.type = "button"; cb.textContent = tx; cb.style.cssText = "min-height:44px;font-size:15px;padding:0 12px"; cb.setAttribute("aria-pressed", "false");
+      cb.onclick = () => { const parts = act.value.split("; ").map(x => x.trim()).filter(Boolean), i = parts.indexOf(tx); if (i >= 0) parts.splice(i, 1); else parts.push(tx); act.value = parts.join("; "); cb.setAttribute("aria-pressed", i < 0); };
+      chips.append(cb);
+    });
+    const btn = document.createElement("button"); btn.type = "button"; btn.className = "p"; btn.textContent = today ? "Registra nuova misura" : "Registra";
+    let fv = new Date().getHours() < 12 ? "Mattino" : "Durante il turno";
+    const fase = document.createElement("div"); fase.className = "seg"; fase.style.cssText = "margin:10px 0 0";
+    fase.setAttribute("role", "group"); fase.setAttribute("aria-label", "Momento del controllo");
+    ["Mattino", "Durante il turno"].forEach(nm => {
+      const fb = document.createElement("button"); fb.type = "button"; fb.textContent = nm; fb.style.minHeight = "44px"; fb.setAttribute("aria-pressed", nm === fv);
+      fb.onclick = () => { fv = nm; [...fase.children].forEach(x => x.setAttribute("aria-pressed", x === fb)); };
+      fase.append(fb);
+    });
+    const check = () => {
+      const v = parseFloat(inp.value);
+      const out = !isNaN(v) && isOut(d, v);
+      c.classList.toggle("out", out); msg.hidden = !out; act.hidden = !out; chips.hidden = !out;
+      if (out) msg.textContent = "Fuori limite: " + limTxt(d) + ". Scrivi l’azione correttiva.";
+    };
+    const step = k => { const v = parseFloat(inp.value); inp.value = Math.round(((isNaN(v) ? d.start : v) + k) * 10) / 10; check(); };
+    minus.onclick = () => step(-1); plus.onclick = () => step(1);
+    inp.addEventListener("input", check);
+    btn.onclick = () => {
+      const v = parseFloat(inp.value), op = $("t_op").value.trim();
+      if (isNaN(v)){ msg.hidden = false; msg.textContent = "Inserisci la temperatura."; return; }
+      if (!op){ $("t_op").focus(); $("t_todo").textContent = "Scrivi il tuo nome prima di registrare."; return; }
+      const out = isOut(d, v), note = act.value.trim();
+      if (out && !note){ act.focus(); msg.hidden = false; msg.textContent = "Fuori limite: scrivi l’azione correttiva per registrare."; return; }
+      save(OPKEY, op);
+      const day2 = selDay(); entries.push({t: Date.now(), data: day2, late: day2 !== todayS(), dev: d.id, v, op, out, note: out ? note : "", fase: fv});
+      if (out) addNc(day2, "Temperatura " + d.n + " fuori limite (" + num(v) + " °C)", note);
+      save(KEY, entries); render();
+      if (out) $("t_todo").textContent = "Fuori limite: ho aperto una non conformità. Completa la risoluzione nella scheda Non conformità.";
+    };
+    if (l){ const same = document.createElement("button"); same.type = "button"; same.textContent = "Stesso valore: " + num(l.v) + " °C"; same.style.cssText = "width:100%;margin-top:8px;min-height:44px"; same.onclick = () => { inp.value = l.v; check(); }; c.append(head, st, row, same, fase, msg, chips, act, btn); } else c.append(head, st, row, fase, msg, chips, act, btn);
+    box.append(c);
+    check();
+  });
+}
+
+function render(){
+  build();
+  $("t_data").max = todayS(); if (!$("t_data").value) $("t_data").value = todayS();
+  $("t_lateHint").hidden = selDay() === todayS();
+  const miss = isClosed(todayS()) ? [] : DEV.filter(d => !entries.some(e => e.dev === d.id && dayOf(e) === todayS())).map(d => d.n);
+  const t = $("t_todo");
+  t.className = miss.length ? "" : "done";
+  t.textContent = miss.length ? "Da registrare oggi: " + miss.join(", ") : (isClosed(todayS()) ? "Oggi il ristorante è chiuso: nessuna temperatura da registrare." : "Tutte le temperature di oggi sono registrate.");
+  const items = entries.slice().sort((a,b) => b.t - a.t).slice(0, 12);
+  const ul = $("t_list"); ul.textContent = "";
+  items.forEach(e => {
+    const d = DEV.find(x => x.id === e.dev);
+    const li = document.createElement("li");
+    const left = document.createElement("div");
+    const nm = document.createElement("b"); nm.textContent = d ? d.n : e.dev;
+    const sm = document.createElement("small"); sm.textContent = dmy(dayOf(e)).slice(0, 5) + (e.late ? " (in ritardo)" : " " + hm(e.t)) + (e.fase ? ", " + e.fase.toLowerCase() : "") + ", " + e.op + (e.note ? ". " + (e.nr ? "" : "Azione: ") + e.note : "");
+    left.append(nm, sm);
+    const v = document.createElement("span"); v.className = "v" + (e.out ? " out" : ""); v.textContent = e.v == null ? "Non rilevata" : num(e.v) + " °C";
+    li.append(left, v); ul.append(li);
+  });
+  $("t_empty").hidden = items.length > 0;
+}
+$("t_data").addEventListener("change", render);
+window.tempApi = {add: e => { entries.push(e); save(KEY, entries); render(); }, refresh: render};
+render();
+
+})();
+
+// --- Pulizia e non conformità
+const PKEY = "haccp-pul-v1", NKEY = "haccp-nc-v1";
+let pul = load(PKEY, []), ncs = load(NKEY, []), rep = "sala";
+const TASKS = {
+  sala: [{k:"g", n:"Interventi giornalieri", d:"Pavimenti, pareti, tavoli, sedie", f:"Tutti i giorni e/o più volte al giorno"},
+         {k:"m", n:"Porte, finestre, soffitti", d:"", f:"Ogni mese"}],
+  cucina: [{k:"g", n:"Interventi giornalieri", d:"Pavimenti, pareti piastrellate, utensili, attrezzature (piano di lavoro, affettatrice, piano cottura, ecc.)", f:"Tutti i giorni e/o più volte al giorno"},
+           {k:"s", n:"Frigoriferi, congelatori, lavastoviglie, forno", d:"", f:"Ogni settimana"},
+           {k:"m", n:"Porte, finestre, soffitti", d:"", f:"Ogni mese"}]
+};
+const dd = x => new Date(x + "T12:00:00");
+const addDays = (x, n) => { const d = dd(x); d.setDate(d.getDate() + n); return ymd(d); };
+const addMonths = x => { const d = dd(x), g = d.getDate(); d.setDate(1); d.setMonth(d.getMonth() + 1); d.setDate(Math.min(g, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate())); return ymd(d); };
+const diffD = (a, b) => Math.round((dd(b) - dd(a)) / 864e5);
+function setRep(r){ rep = r; $("rSala").setAttribute("aria-pressed", r === "sala"); $("rCuc").setAttribute("aria-pressed", r === "cucina"); renderPul(); }
+$("rSala").onclick = () => setRep("sala"); $("rCuc").onclick = () => setRep("cucina");
+$("pData").onchange = () => renderPul();
+$("pAll").onclick = () => { const sel = $("pData").value || ymd(Date.now()); ["sala", "cucina"].forEach(r2 => { if (!pul.some(e => e.rep === r2 && e.task === "g" && e.data === sel)) pul.push({t: Date.now(), rep: r2, task: "g", data: sel, firma: load(OPKEY, "") || "Ivan Torrice"}); }); save(PKEY, pul); renderPul(); };
+function renderPul(){
+  if (!$("pData").value) $("pData").value = ymd(Date.now());
+  const sel = $("pData").value, box = $("pTasks"); box.textContent = "";
+  const due = [], todayS = ymd(Date.now());
+  for (const r2 in TASKS) TASKS[r2].forEach(tk => {
+    const R = r2 === "cucina" ? "Cucina" : "Sala";
+    if (tk.k === "s" || tk.k === "m"){
+      const l2 = pul.filter(e => e.rep === r2 && e.task === tk.k && !e.nr).sort((a, b) => a.data < b.data ? 1 : -1)[0], lim2 = tk.k === "s" ? 2 : 5;
+      if (!l2) due.push(R + ": " + tk.n + " (mai registrata)");
+      else { const left2 = diffD(todayS, tk.k === "s" ? addDays(l2.data, 7) : addMonths(l2.data));
+        if (left2 < 0) due.push(R + ": " + tk.n + (tk.k === "s" ? " (settimanale scaduta)" : " (mensile scaduta)"));
+        else if (left2 <= lim2) due.push(R + ": " + tk.n + (left2 === 0 ? " (scade oggi)" : " (scade tra " + left2 + (left2 === 1 ? " giorno)" : " giorni)"))); }
+    }
+  });
+  $("pDue").textContent = due.length ? "Da fare: " + due.join(" · ") : ""; $("pDue").hidden = !due.length;
+  TASKS[rep].forEach(tk => {
+    const mine = pul.filter(e => e.rep === rep && e.task === tk.k).sort((a, b) => b.t - a.t);
+    let ok, txt, early = false;
+    if (tk.k === "g"){
+      const e = mine.find(x => x.data === sel); ok = !!e && !e.nr;
+      txt = e ? (e.nr ? "Segnato come non eseguito il " + dmy(sel) : "Fatto il " + dmy(sel) + (e.data !== ymd(e.t) ? ", inserito in ritardo il " + dmy(ymd(e.t)) : " alle " + new Date(e.t).toLocaleTimeString("it-IT", {hour:"2-digit", minute:"2-digit"})) + ". Prossima: " + dmy(addDays(sel, 1))) : "Non ancora fatto il " + dmy(sel);
+    } else {
+      const lim = tk.k === "s" ? 2 : 5;
+      const l = mine.filter(x => x.data <= sel && !x.nr).sort((a, b) => a.data < b.data ? 1 : -1)[0];
+      if (!l){ ok = false; txt = "Mai registrata: da fare."; }
+      else {
+        const due = tk.k === "s" ? addDays(l.data, 7) : addMonths(l.data), ago = diffD(l.data, sel), left = diffD(sel, due);
+        ok = left > lim; early = left > 0;
+        txt = "Ultima volta: " + dmy(l.data) + (ago === 0 ? " (oggi)" : ago === 1 ? " (ieri)" : " (" + ago + " giorni fa)") + ". " + (left > 1 ? "Prossima entro " + dmy(due) + ": mancano " + left + " giorni." : left === 1 ? "Prossima entro " + dmy(due) + ": manca 1 giorno." : left === 0 ? "Scade oggi (" + dmy(due) + ")." : "Scaduta da " + (-left) + (left === -1 ? " giorno" : " giorni") + " (era entro " + dmy(due) + ").");
+      }
+    }
+    const div = document.createElement("div"); div.className = "tk"; div.dataset.task = tk.k;
+    const b = document.createElement("b"); b.textContent = tk.n;
+    const sm = document.createElement("small"); sm.textContent = (tk.d ? tk.d + ". " : "") + tk.f;
+    const st = document.createElement("div"); st.className = "s " + (ok ? "ok" : "late"); st.textContent = txt;
+    const btn = document.createElement("button"); btn.type = "button"; btn.className = "p"; btn.textContent = early ? "Registra comunque (non ancora scaduta)" : (ok ? "Segna di nuovo" : "Segna come fatto");
+    btn.onclick = () => { pul.push({t: Date.now(), rep, task: tk.k, data: sel, firma: load(OPKEY, "") || "Ivan Torrice"}); save(PKEY, pul); renderPul(); };
+    div.append(b, sm, st, btn); box.append(div);
+  });
+}
+function renderNc(){
+  if (!$("nData").value) $("nData").value = ymd(Date.now());
+  const ul = $("nList"); ul.textContent = "";
+  ncs.slice().sort((a, b) => b.t - a.t).slice(0, 10).forEach(e => {
+    const li = document.createElement("li");
+    const b = document.createElement("b"); b.textContent = dmy(e.data) + ": " + e.desc;
+    const sm = document.createElement("small"); sm.textContent = (e.ris ? "Risoluzione: " + e.ris + ". " : "") + (e.chiusura ? "Chiusa il " + dmy(e.chiusura) : "Aperta");
+    li.append(b, sm);
+    if (!e.chiusura){ const c = document.createElement("button"); c.type = "button"; c.textContent = "Chiudi oggi"; c.style.marginTop = "8px"; c.onclick = () => { e.chiusura = ymd(Date.now()); save(NKEY, ncs); renderNc(); }; li.append(c); }
+    ul.append(li);
+  });
+  $("nEmpty").hidden = ncs.length > 0;
+}
+$("fNc").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const desc = $("nDesc").value.trim();
+  if (!desc){ $("nSt").textContent = "Scrivi cosa è successo."; $("nSt").className = "err"; return; }
+  ncs.push({t: Date.now(), data: $("nData").value || ymd(Date.now()), desc, ris: $("nRis").value.trim(), chiusura: ""});
+  save(NKEY, ncs); $("nDesc").value = ""; $("nRis").value = "";
+  $("nSt").textContent = "Salvata."; $("nSt").className = ""; renderNc();
+});
+function pulRows(r, ym){
+  if (ym === "tutto") ym = ymd(Date.now()).slice(0, 7);
+  const [y, m] = ym.split("-").map(Number), n = new Date(y, m, 0).getDate();
+  const all = load(PKEY, []).filter(e => e.rep === r && e.data.slice(0, 7) === ym), rows = [];
+  const first = load(PKEY, []).map(e => e.data).sort()[0] || "9999", today = ymd(Date.now());
+  for (let d = 1; d <= n; d++){
+    const day = ym + "-" + String(d).padStart(2, "0"), es = all.filter(e => e.data === day).sort(byT);
+    const has = k => es.some(e => e.task === k && !e.nr) ? "X" : "";
+    let sig = es.map(e => e.nr ? "NON ESEGUITA (" + e.firma + ")" : e.firma + " " + (e.data !== ymd(e.t) ? "inserito in ritardo il " + dmy(ymd(e.t)) + " " + hmE(e.t) : hmE(e.t))).join("; ");
+    if (!es.some(e => e.task === "g") && day >= first && day < today) sig = (sig ? sig + "; " : "") + (isClosed(day) ? "Chiuso" : "Giornaliero non registrato");
+    rows.push(r === "cucina" ? [d, has("g"), has("s"), has("m"), sig] : [d, has("g"), has("m"), sig]);
+  }
+  return rows;
+}
+function renderOggi(){
+  const box = $("oggi"); if (!box) return;
+  const todayS = ymd(Date.now()), tE = load("haccp-temp-v1", []), pE = load(PKEY, []), nE = load(NKEY, []);
+  const items = [], closed = isClosed(todayS);
+  [["z1", "Freezer 1"], ["z2", "Freezer 2"]].forEach(([id, nm]) => { if (!closed && !tE.some(e => e.dev === id && (e.data || ymd(e.t)) === todayS)) items.push({t: "Temperatura " + nm, s: "Non ancora registrata oggi", go: () => { const t = $("t_data"); t.value = ymd(Date.now()); t.dispatchEvent(new Event("change")); show("t"); }, tg: () => document.querySelector('#t_cards .card[data-dev="' + id + '"]')}); });
+  [["sala", "Sala"], ["cucina", "Cucina"]].forEach(([r2, nm]) => { if (!closed && !pE.some(e => e.rep === r2 && e.task === "g" && e.data === todayS)) items.push({t: "Pulizia giornaliera: " + nm, s: "Non ancora segnata oggi", go: () => { $("pData").value = ymd(Date.now()); show("p"); setRep(r2); }, tg: () => document.querySelector('#pTasks .tk[data-task="g"]')}); });
+  for (const r2 in TASKS) TASKS[r2].forEach(tk => {
+    if (tk.k !== "s" && tk.k !== "m") return;
+    const R = r2 === "cucina" ? "Cucina" : "Sala", l2 = pE.filter(e => e.rep === r2 && e.task === tk.k && !e.nr).sort((a, b) => a.data < b.data ? 1 : -1)[0], lim2 = tk.k === "s" ? 2 : 5, go = () => { $("pData").value = ymd(Date.now()); show("p"); setRep(r2); }, tg = () => document.querySelector('#pTasks .tk[data-task="' + tk.k + '"]');
+    if (!l2){ items.push({t: R + ": " + tk.n, s: (tk.k === "s" ? "Settimanale" : "Mensile") + ", mai registrata", late: true, go, tg}); return; }
+    const left2 = diffD(todayS, tk.k === "s" ? addDays(l2.data, 7) : addMonths(l2.data));
+    if (left2 < 0) items.push({t: R + ": " + tk.n, s: (tk.k === "s" ? "Settimanale" : "Mensile") + " scaduta da " + (-left2) + (left2 === -1 ? " giorno" : " giorni"), late: true, go, tg});
+    else if (left2 <= lim2) items.push({t: R + ": " + tk.n, s: (tk.k === "s" ? "Settimanale" : "Mensile") + ", " + (left2 === 0 ? "scade oggi" : "scade tra " + left2 + (left2 === 1 ? " giorno" : " giorni")), go, tg});
+  });
+  const first = [...tE.map(e => e.data || ymd(e.t)), ...pE.map(e => e.data)].sort()[0];
+  if (first){
+    const lim = dd(todayS), min = new Date(lim); min.setDate(min.getDate() - 30); let d = dd(first); if (d < min) d = min; let n = 0;
+    for (; d < lim; d.setDate(d.getDate() + 1)){ const day = ymd(d); if (isClosed(day)) continue;
+      ["z1", "z2"].forEach(id => { if (!tE.some(e => e.dev === id && (e.data || ymd(e.t)) === day)) n++; });
+      ["sala", "cucina"].forEach(r2 => { if (!pE.some(e => e.rep === r2 && e.task === "g" && e.data === day)) n++; }); }
+    if (n) items.push({t: n + (n === 1 ? " registrazione dei giorni scorsi" : " registrazioni dei giorni scorsi") + " mancante", s: "Inseriscila in ritardo o segnala che non è stata fatta", late: true, go: () => show("x"), tg: () => document.querySelector("#mList .tk")});
+  }
+  const sc = scadList().filter(x => x.left != null && x.left <= 2);
+  if (sc.length){ const sc0 = sc.filter(x => x.left < 0).length; items.push({t: sc.length + (sc.length === 1 ? " prodotto scaduto o in scadenza" : " prodotti scaduti o in scadenza"), s: sc.slice(0, 3).map(x => (x.e.prodotto || "?") + " (" + (x.left < 0 ? "scaduto" : x.left === 0 ? "oggi" : x.left === 1 ? "domani" : "tra 2 giorni") + ")").join(", ") + (sc.length > 3 ? "…" : ""), late: sc0 > 0, go: () => show("m"), tg: () => $("scBox")}); }
+  const nc = nE.filter(e => !e.chiusura).length;
+  if (nc) items.push({t: nc + (nc === 1 ? " non conformità aperta" : " non conformità aperte"), s: "Completa la risoluzione e chiudi", go: () => show("n"), tg: () => [...document.querySelectorAll("#vNc li")].find(li => li.querySelector("button"))});
+  if (window.prepApi && !closed){ const pt = prepApi.today(); if (pt.n) items.push({t: "Preparazioni di oggi: " + pt.n + (pt.n === 1 ? " fase" : " fasi"), s: pt.min + " minuti di lavoro", go: () => show("q")}); }
+  const sig = JSON.stringify(items.map(i => i.t + i.s)) + closed;
+  if (box.dataset.sig === sig) return; box.dataset.sig = sig;
+  box.textContent = "";
+  if (!items.length){ box.className = "ok"; const pp = document.createElement("p"); pp.textContent = closed ? "✓ Oggi il ristorante è chiuso: niente da registrare" : "✓ Tutto fatto per oggi"; box.append(pp); return; }
+  box.className = "";
+  const h2 = document.createElement("h2"); h2.textContent = "Da fare oggi (" + items.length + ")"; box.append(h2);
+  items.forEach(i => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "it" + (i.late ? " late" : "");
+    const w = document.createElement("span"), t = document.createElement("span"), sm = document.createElement("small"); t.textContent = i.t; sm.textContent = i.s; w.append(t, sm); b.append(w);
+    b.onclick = () => { i.go(); setTimeout(() => { const el = i.tg && i.tg(); if (el){ el.scrollIntoView({block: "center", behavior: "smooth"}); el.classList.remove("pulse"); void el.offsetWidth; el.classList.add("pulse"); } else window.scrollTo(0, 0); }, 80); }; box.append(b);
+  });
+}
+window.todayApi = {render: renderOggi};
+renderOggi(); setInterval(() => { if (!document.hidden) renderOggi(); }, 1500);
+function addNc(day, desc, ris){ ncs.push({t: Date.now(), data: day, desc, ris, chiusura: ""}); save(NKEY, ncs); }
+function renderMis(){
+  const box = $("mList"); box.textContent = ""; let n = 0;
+  const tE = load("haccp-temp-v1", []), pE = load(PKEY, []);
+  const firma = () => load(OPKEY, "") || "Ivan Torrice", mot = () => $("mMot").value.trim() || "Dimenticanza";
+  const first = [...tE.map(e => e.data || ymd(e.t)), ...pE.map(e => e.data)].sort()[0];
+  const todayS = ymd(Date.now()), lim = dd(todayS), min = new Date(lim); min.setDate(min.getDate() - 30);
+  const days = [];
+  if (first){ let d = dd(first); if (d < min) d = min; for (; d < lim; d.setDate(d.getDate() + 1)) if (!isClosed(ymd(d))) days.push(ymd(d)); }
+  days.reverse().forEach(day => {
+    const items = [];
+    [["z1", "Freezer 1"], ["z2", "Freezer 2"]].forEach(([id, nm]) => { if (!tE.some(e => e.dev === id && (e.data || ymd(e.t)) === day)) items.push({k: "t", id, nm: "Temperatura " + nm}); });
+    ["sala", "cucina"].forEach(r2 => { if (!pE.some(e => e.rep === r2 && e.task === "g" && e.data === day)) items.push({k: "p", id: r2, nm: "Pulizia giornaliera, " + (r2 === "cucina" ? "cucina" : "sala")}); });
+    items.forEach(it => {
+      n++;
+      const div = document.createElement("div"); div.className = "tk";
+      const b = document.createElement("b"); b.textContent = dmy(day) + ": " + it.nm;
+      const sm = document.createElement("small"); sm.textContent = "Nessuna registrazione";
+      const row = document.createElement("div"); row.className = "row"; row.style.marginTop = "10px";
+      const b1 = document.createElement("button"); b1.type = "button"; b1.className = "p";
+      const b2 = document.createElement("button"); b2.type = "button"; b2.textContent = it.k === "t" ? "Non rilevata" : "Non eseguita";
+      if (it.k === "t"){
+        b1.textContent = "Inserisci misura";
+        b1.onclick = () => { $("t_data").value = day; show("t"); $("t_data").dispatchEvent(new Event("change")); window.scrollTo(0, 0); };
+        b2.onclick = () => { const op = firma(), m = mot(); window.tempApi.add({t: Date.now(), data: day, late: true, dev: it.id, v: null, op, out: true, note: "Non rilevata: " + m, nr: true}); addNc(day, it.nm + " non rilevata", m); renderMis(); };
+      } else {
+        b1.textContent = "Fatto, inserisco ora";
+        b1.onclick = () => { pul.push({t: Date.now(), rep: it.id, task: "g", data: day, firma: firma()}); save(PKEY, pul); renderMis(); };
+        b2.onclick = () => { const m = mot(); pul.push({t: Date.now(), rep: it.id, task: "g", data: day, firma: firma(), nr: true}); save(PKEY, pul); addNc(day, it.nm + " non eseguita", m); renderMis(); };
+      }
+      row.append(b1, b2); div.append(b, sm, row); box.append(div);
+    });
+  });
+  $("mEmpty").hidden = n > 0;
+}
+const RIST = "Vittoria 1926 Osteria Contemporanea";
+const MESI = ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
+const DEVN = {f1:"Frigo 1", f2:"Frigo 2", z1:"Freezer 1", z2:"Freezer 2"};
+const hmE = t => new Date(t).toLocaleTimeString("it-IT", {hour:"2-digit", minute:"2-digit"});
+const numE = v => v.toLocaleString("it-IT", {maximumFractionDigits:1});
+const inMese = (t, ym) => ym === "tutto" || ymd(t).slice(0, 7) === ym;
+const byT = (a, b) => a.t - b.t;
+const REG = {
+  temp: {titolo:"Registro temperature freezer", file:"temperature",
+    head:["Data","Ora","Momento","Apparecchio","Temp. (°C)","Esito","Azione correttiva","Firma operatore"],
+    rows: ym => {
+      const tE = load("haccp-temp-v1", []), dO = e => e.data || ymd(e.t), today = ymd(Date.now());
+      const list = tE.filter(e => ym === "tutto" || dO(e).slice(0, 7) === ym).map(e => ({day: dO(e), t: e.t, row: [dmy(dO(e)), e.late ? "in ritardo" : hmE(e.t), e.fase || "-", DEVN[e.dev] || e.dev, e.v == null ? "-" : numE(e.v), e.nr ? "NON RILEVATA" : (e.out ? "FUORI LIMITE" : "Conforme"), (e.late && !e.nr ? "Inserita il " + dmy(ymd(e.t)) + " alle " + hmE(e.t) + (e.note ? ". " : "") : "") + (e.note || ""), e.op || ""]}));
+      const first = tE.map(dO).sort()[0];
+      if (first && ym !== "tutto"){
+        const [y, mo] = ym.split("-").map(Number), nd = new Date(y, mo, 0).getDate();
+        for (let d = 1; d <= nd; d++){
+          const day = ym + "-" + String(d).padStart(2, "0"); if (day < first || day >= today) continue;
+          if (isClosed(day)){ if (!tE.some(e => dO(e) === day)) list.push({day, t: 0, row: [dmy(day), "-", "-", "-", "-", "Chiuso", "Giorno di chiusura", ""]}); continue; }
+          ["z1", "z2"].forEach(id => { if (!tE.some(e => e.dev === id && dO(e) === day)) list.push({day, t: 0, row: [dmy(day), "-", "-", DEVN[id], "-", "NON RILEVATA", "Nessuna registrazione", ""]}); });
+        }
+      }
+      return list.sort((a, b) => a.day < b.day ? -1 : a.day > b.day ? 1 : a.t - b.t).map(x => x.row);
+    }},
+  merce: {titolo:"Registro tracciabilità merce in arrivo", file:"merce-in-arrivo",
+    head:["Data","Ora","Prodotto","Fornitore","Lotto","Scadenza","T. mezzo","Cond. mezzo","Cond. prodotto","Firma operatore"],
+    rows: ym => load(KEY, []).filter(e => inMese(e.t, ym)).sort(byT).map(e => [dmy(ymd(e.t)), hmE(e.t), e.prodotto || "", e.fornitore || "", e.lotto || "", e.scadenza || "", e.tt || "-", e.ct || "-", e.cp || "-", e.op || ""])},
+  pos: {titolo:"Registro abbattimento positivo", file:"abbattimento-positivo", tipo:"Positivo",
+    head:["Data","Ora","Prodotto","Temp. iniziale (°C)","Lotto","Conforme","Firma"]},
+  neg: {titolo:"Registro abbattimento negativo", file:"abbattimento-negativo", tipo:"Negativo",
+    head:["Data","Ora","Prodotto","Temp. iniziale (°C)","Lotto","Conforme","Firma"]}
+};
+["pos","neg"].forEach(k => { REG[k].rows = ym => load(AKEY, []).filter(e => e.tipo === REG[k].tipo && (ym === "tutto" || e.data.slice(0, 7) === ym)).sort(byT).map(e => [dmy(e.data), (e.data !== ymd(e.t) ? "inserito il " + dmy(ymd(e.t)) + " " + hmE(e.t) : hmE(e.t)), e.prodotto, numE(e.temp), e.lotto || "-", e.conf || "-", e.firma || ""]); });
+
+REG.pulsala = {titolo:"Scheda di pulizia e sanificazione - Sala, deposito e servizi", file:"pulizia-sala", pul:true,
+  head:["Data","Interventi giornalieri","Pulizia porte, finestre, soffitti (ogni mese)","Firma e orario"], rows: ym => pulRows("sala", ym)};
+REG.pulcucina = {titolo:"Scheda di pulizia e sanificazione - Cucina", file:"pulizia-cucina", pul:true,
+  head:["Data","Interventi giornalieri","Frigoriferi, congelatori, lavastoviglie, forno (ogni settimana)","Pulizia porte, finestre, soffitti (ogni mese)","Firma e orario"], rows: ym => pulRows("cucina", ym)};
+REG.nc = {titolo:"Scheda delle non conformità", file:"non-conformita",
+  head:["Data","Descrizione non conformità","Risoluzione","Data chiusura"],
+  rows: ym => load(NKEY, []).filter(e => ym === "tutto" || e.data.slice(0, 7) === ym).sort(byT).map(e => [dmy(e.data), e.desc, e.ris || "", e.chiusura ? dmy(e.chiusura) : "Aperta"])};
+
+function prepExp(){
+  const s = $("eMese"); if (s.options.length) return;
+  const n = new Date();
+  for (let i = 0; i < 12; i++){
+    const d = new Date(n.getFullYear(), n.getMonth() - i, 1);
+    const o = document.createElement("option");
+    o.value = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+    o.textContent = MESI[d.getMonth()] + " " + d.getFullYear(); s.append(o);
+  }
+  const all = document.createElement("option"); all.value = "tutto"; all.textContent = "Tutti i dati"; s.append(all);
+}
+function eMsg(m, err){ $("eSt").textContent = m; $("eSt").className = err ? "err" : ""; }
+
+async function makePdf(k){
+  const r = REG[k]; let ym = $("eMese").value; if (r.pul && ym === "tutto") ym = ymd(Date.now()).slice(0, 7);
+  if (!window.jspdf){ eMsg("Non riesco a caricare il generatore di PDF. Controlla la connessione e riprova.", true); return; }
+  const rows = r.rows(ym);
+  const mo = [...$("eMese").options].find(x => x.value === ym), lab = mo ? mo.textContent : "tutti i dati";
+  const doc = new window.jspdf.jsPDF({orientation:"landscape", unit:"mm", format:"a4"});
+  doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.text(RIST, 14, 16);
+  doc.setFontSize(12); doc.text(r.titolo, 14, 23);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+  doc.text("Periodo: " + lab + "   |   Generato il " + dmy(ymd(Date.now())) + " alle " + hmE(Date.now()), 14, 29);
+  doc.autoTable({
+    startY: 33, head: [r.head],
+    body: rows.length ? rows : [[{content: "Nessuna registrazione nel periodo.", colSpan: r.head.length}]],
+    styles: {fontSize: 9, cellPadding: r.pul ? 1.2 : 2}, headStyles: {fillColor: [14, 90, 88]},
+    didParseCell: d => { if (d.section === "body" && (d.cell.raw === "FUORI LIMITE" || d.cell.raw === "NON RILEVATA" || d.cell.raw === "NC" || d.cell.raw === "No")){ d.cell.styles.textColor = [180, 84, 10]; d.cell.styles.fontStyle = "bold"; } }
+  });
+  if (r.pul){ let y = doc.lastAutoTable.finalY + 8; if (y > doc.internal.pageSize.getHeight() - 12){ doc.addPage(); y = 20; } doc.setFontSize(9); doc.text("Prodotti utilizzati: detergente neutro o alcalino, disinfettante a base di cloro/alcol.", 14, y); }
+  const n = doc.getNumberOfPages(), w = doc.internal.pageSize.getWidth(), h = doc.internal.pageSize.getHeight();
+  for (let i = 1; i <= n; i++){ doc.setPage(i); doc.setFontSize(8); doc.text("Pagina " + i + " di " + n, w - 14, h - 8, {align: "right"}); }
+  let dl = null;
+  try { dl = await claude.use("downloads"); } catch(e){ dl = null; }
+  if (!dl){ eMsg("Il salvataggio dei file non è disponibile qui. Apri la pagina dal browser.", true); return; }
+  try {
+    await dl.save({filename: r.file + "-" + (ym === "tutto" ? "completo" : ym) + ".pdf", data: doc.output("blob")});
+    eMsg("PDF pronto: " + r.titolo + ", " + lab + ".");
+  } catch(e){ eMsg(e && e.code === "declined" ? "Salvataggio annullato." : "Non sono riuscito a salvare il PDF. Riprova.", e && e.code !== "declined"); }
+}
+document.querySelectorAll(".exp button").forEach(b => { b.onclick = () => makePdf(b.dataset.k); });
+
+// --- Comando vocale
+(function(){
+  const NUM = {zero:0,uno:1,due:2,tre:3,"tré":3,quattro:4,cinque:5,sei:6,sette:7,otto:8,nove:9,dieci:10,undici:11,dodici:12,tredici:13,quattordici:14,quindici:15,sedici:16,diciassette:17,diciotto:18,diciannove:19,venti:20,trenta:30,quaranta:40,cinquanta:50,sessanta:60,settanta:70,ottanta:80,novanta:90,cento:100};
+  const TENS = {vent:20,trent:30,quarant:40,cinquant:50,sessant:60,settant:70,ottant:80,novant:90};
+  const wnum = w => { if (Object.prototype.hasOwnProperty.call(NUM, w)) return NUM[w]; const m = w.match(/^(vent|trent|quarant|cinquant|sessant|settant|ottant|novant)(?:a|i)?(uno|due|tre|tré|quattro|cinque|sei|sette|otto|nove)$/); return m ? TENS[m[1]] + NUM[m[2]] : null; };
+  function norm(t){
+    t = t.toLowerCase().replace(/[−–—]/g, "-").replace(/°c?/g, " ").replace(/\b(gradi|grado|celsius)\b/g, " ").replace(/\bvirgola\b/g, ".").replace(/(\d),(\d)/g, "$1.$2");
+    t = t.split(/\s+/).map(w => { const c = w.replace(/[.,;:!?]+$/, ""), n = c ? (c.startsWith("duemila") ? (c.length === 7 ? 2000 : (wnum(c.slice(7)) === null ? null : 2000 + wnum(c.slice(7)))) : wnum(c)) : null; return n === null ? w : String(n); }).join(" ");
+    return t.replace(/\b([2-9]0) ([1-9])\b/g, (m, a, b) => String(+a + +b)).replace(/(\d)\s*\.\s*(\d)/g, "$1.$2");
+  }
+  const numIn = x => { const r = x.match(/(meno\s*|-\s*)?(\d+(?:\.\d+)?)(\s*sotto zero)?/); return r ? ((r[1] || r[3]) ? -parseFloat(r[2]) : parseFloat(r[2])) : null; };
+  const fmtN = v => v.toLocaleString("it-IT", {maximumFractionDigits: 1});
+  const MES = {gennaio:1,febbraio:2,marzo:3,aprile:4,maggio:5,giugno:6,luglio:7,agosto:8,settembre:9,ottobre:10,novembre:11,dicembre:12};
+  const cap = w => w ? w.charAt(0).toUpperCase() + w.slice(1) : w;
+  const stripStop = (arr, STOP) => { const w = arr.slice(); while (w.length && STOP.has(w[0])) w.shift(); while (w.length && STOP.has(w[w.length - 1])) w.pop(); return w; };
+  function pdate(x){
+    if (!x) return "";
+    let d, mo, y, m = x.match(/(\d{1,2})\s+([a-zì]+)(?:\s+(\d{2,4}))?/);
+    if (m && MES[m[2]]){ d = +m[1]; mo = MES[m[2]]; y = m[3]; }
+    else { m = x.match(/(\d{1,2})\s*[\/\-. ]\s*(\d{1,2})(?:\s*[\/\-. ]\s*(\d{2,4}))?/); if (!m) return ""; d = +m[1]; mo = +m[2]; y = m[3]; }
+    y = y ? (+y < 100 ? 2000 + +y : +y) : new Date().getFullYear();
+    if (d < 1 || d > 31 || mo < 1 || mo > 12) return "";
+    return String(d).padStart(2, "0") + "/" + String(mo).padStart(2, "0") + "/" + y;
+  }
+  function extractDate(t){
+    const now = new Date(), tdy = now.getDate();
+    const sub = n => ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() - n, 12).getTime());
+    const mk = (d, mo, y, noYear) => { let dt = new Date(y, mo - 1, d, 12); if (d < 1 || dt.getMonth() !== mo - 1) return ""; if (noYear && dt > now) dt = new Date(y - 1, mo - 1, d, 12); return ymd(dt.getTime()); };
+    let m;
+    if ((m = t.match(/\bl['’]?\s?altro\s*ieri\b|\baltroieri\b|\bdue giorni fa\b/))) return {data: sub(2), rest: t.replace(m[0], " ")};
+    if ((m = t.match(/\bieri\b/))) return {data: sub(1), rest: t.replace(m[0], " ")};
+    if ((m = t.match(new RegExp("(?:\\bil\\s+)?(?:giorno\\s+)?(\\d{1,2})\\s+(" + Object.keys(MES).join("|") + ")(?:\\s+(\\d{4}))?")))){
+      const r = mk(+m[1], MES[m[2]], m[3] ? +m[3] : now.getFullYear(), !m[3]); if (r) return {data: r, rest: t.replace(m[0], " ")};
+    }
+    if ((m = t.match(/(\d{1,2})\s*\/\s*(\d{1,2})(?:\s*\/\s*(\d{2,4}))?/))){
+      const y = m[3] ? (+m[3] < 100 ? 2000 + +m[3] : +m[3]) : now.getFullYear(), r = mk(+m[1], +m[2], y, !m[3]); if (r) return {data: r, rest: t.replace(m[0], " ")};
+    }
+    if ((m = t.match(/(?:\bil\s+giorno\s+|\bgiorno\s+|\bil\s+)(\d{1,2})\b(?!\s*(?:kg|gradi|°|chil|grammi))/))){
+      const d = +m[1]; let mo = now.getMonth() + 1, y = now.getFullYear();
+      if (d > tdy){ mo -= 1; if (mo < 1){ mo = 12; y -= 1; } }
+      const r = mk(d, mo, y, false); if (r) return {data: r, rest: t.replace(m[0], " ")};
+    }
+    return {data: "", rest: t};
+  }
+  function parse(raw){
+    let t = norm(raw); const items = [], isAbb = /abbatt/.test(t), isMerce = !isAbb && /merce|arrivat|ricevut|consegn|\blotto\b/.test(t);
+    t = t.replace(/\b(freezer|congelator[ei])\s+(primo|prima)\b/g, "$1 1").replace(/\b(freezer|congelator[ei])\s+(secondo|seconda)\b/g, "$1 2");
+    const fase = /durante|turno|pomeriggio|sera\b/.test(t) ? "Durante il turno" : /mattin/.test(t) ? "Mattino" : (new Date().getHours() < 12 ? "Mattino" : "Durante il turno");
+    if (!isAbb && !isMerce && /freezer|congelator|temperatur/.test(t)){
+      const re = /(?:freezer|congelator[ei])\s*(?:numero\s*)?(?:(\d)(?![\d.]))?/g, ms = []; let m;
+      while ((m = re.exec(t))) ms.push({i: m.index, e: re.lastIndex, d: m[1] || ""});
+      if (!ms.length){ const v = numIn(t); if (v !== null) ["z1", "z2"].forEach(id => items.push({k: "t", id, v})); }
+      else {
+        ms.forEach((x, i) => { const v = numIn(t.slice(x.e, i + 1 < ms.length ? ms[i + 1].i : t.length)); if (v === null) return; if (x.d === "1" || x.d === "2") items.push({k: "t", id: "z" + x.d, v}); else if (ms.length === 1) ["z1", "z2"].forEach(id => items.push({k: "t", id, v})); });
+        if (!items.length && ms.length === 1){ const v = numIn(t.replace(re, " ")); if (v !== null) ["z1", "z2"].forEach(id => items.push({k: "t", id, v})); }
+      }
+    }
+    if (!isAbb && !isMerce && /puliz|pulit|sanific|igienizz/.test(t)){
+      const tk = /settimanal|frigorifer|lavastoviglie|forno/.test(t) ? "s" : /mensil|porte|finestre|soffitt/.test(t) ? "m" : "g";
+      let reps = /cucina/.test(t) ? ["cucina"] : /\bsala\b|deposito|servizi/.test(t) ? ["sala"] : ["sala", "cucina"];
+      if (tk === "s") reps = ["cucina"];
+      reps.forEach(r => items.push({k: "p", rep: r, task: tk}));
+    }
+    if (isAbb){
+      const dx = extractDate(t), u = dx.rest.replace(/\d+(?:\.\d+)?\s*(?:kg|chilogrammi|chili|chilo|grammi|g|porzioni|pezzi|litri)\b/g, " ");
+      const nm = u.match(/\d+(?:\.\d+)?/), tipo = /negativ|surgel/.test(t) ? "Negativo" : /positiv/.test(t) ? "Positivo" : "";
+      const conf = /non (?:è )?conform/.test(t) ? "No" : /conform/.test(t) ? "Sì" : "";
+      const STOP = new Set(["ho","abbattuto","abbattimento","abbattuti","abbattuta","negativo","positivo","in","adesso","oggi","di","del","dello","della","dei","degli","delle","un","una","uno","il","lo","la","i","gli","le","a","e","è","non","conforme","gradi","temperatura","iniziale","partenza","appena","ora","fatto","fatti","surgelazione","successiva","per","miei","mio"]);
+      const NOISE = new Set(["abbattuto","abbattimento","negativo","positivo","oggi","adesso","ho","sera","stasera","mattina","stamattina","pomeriggio","notte","ieri","scorsa","scorso"]);
+      const w = stripStop(u.replace(/\d+(?:\.\d+)?/g, " ").replace(/[,;:.!?]/g, " ").split(/\s+/).filter(x => x && !NOISE.has(x)), STOP);
+      items.push({k: "a", tipo, prodotto: cap(w.join(" ")), temp: nm ? parseFloat(nm[0]) : null, conf, data: dx.data});
+    }
+    if (isMerce){
+      const MK = /\b(lotto|scadenza|scade|fornitore|prodotto)\b/g, marks = []; let mm;
+      while ((mm = MK.exec(t))) marks.push({k: mm[1] === "scade" ? "scadenza" : mm[1], i: mm.index, e: MK.lastIndex});
+      const seg = k => { const x = marks.find(q => q.k === k); if (!x) return ""; const nx = marks.find(q => q.i > x.i); return t.slice(x.e, nx ? nx.i : t.length).trim(); };
+      const STOP2 = new Set(["merce","in","arrivo","arrivata","arrivato","arrivati","arrivate","è","sono","ho","ricevuto","ricevuta","oggi","adesso","consegna","consegnata","la","il","lo","le","i","un","una","uno","di","del","della","dei","delle","e","ora","appena","prodotto","numero","n"]);
+      const head = t.slice(0, marks.length ? marks[0].i : t.length).replace(/[,;:.!?]/g, " ").split(/\s+/).filter(Boolean);
+      const pr = cap(stripStop((seg("prodotto") ? seg("prodotto").split(/\s+/) : head).filter(Boolean), STOP2).join(" "));
+      const lo = seg("lotto").split(/\s+/).filter(x => x && !STOP2.has(x)).map(x => x === "elle" ? "l" : x).join("").replace(/[^0-9a-z]/g, "").toUpperCase();
+      const fo = stripStop(seg("fornitore").replace(/[,;:!?]/g, " ").split(/\s+/).filter(Boolean), STOP2).map(x => /^(spa|s\.p\.a\.?)$/.test(x) ? "S.p.A." : x.length <= 3 ? x.toUpperCase() : cap(x)).join(" ");
+      const sc = pdate(seg("scadenza"));
+      if (pr || lo || sc || fo) items.push({k: "m", prodotto: pr, lotto: lo, scadenza: sc, fornitore: fo});
+    }
+    return {items, fase};
+  }
+  function plan(raw){
+    const {items, fase} = parse(raw), today = ymd(Date.now()), who = load(OPKEY, "") || "Ivan Torrice";
+    return items.map(it => {
+      if (it.k === "m"){
+        const parts = [it.prodotto && "prodotto " + it.prodotto, it.lotto && "lotto " + it.lotto, it.scadenza && "scadenza " + it.scadenza, it.fornitore && "fornitore " + it.fornitore].filter(Boolean);
+        return {label: "Merce in arrivo: " + parts.join(", "), open: true, run: () => { show("m"); $("prev").hidden = true; $("file").value = ""; openForm({prodotto: it.prodotto, fornitore: it.fornitore, lotto: it.lotto, scadenza: it.scadenza}); status("Dati detti a voce: controllali, indica le tre conformità e salva."); window.scrollTo(0, 0); return "Ho aperto il modulo Merce in arrivo con questi dati: controllali, indica le tre conformità e salva."; }};
+      }
+      if (it.k === "a"){
+        const st = {tipo: it.tipo, prodotto: it.prodotto, temp: it.temp, lotto: "", conf: "Sì", touched: false, posFirst: true, tempPos: null, data: it.data || today}, e0 = findLot(st.prodotto);
+        if (e0) st.lotto = e0.lotto;
+        return {label: "Abbattimento (controlla e completa i campi)", ui: card => {
+          const lab = (t2, inp) => { const l = el("label"); l.className = "f"; l.append(document.createTextNode(t2), inp); return l; };
+          const box = el("div", "", "margin-top:10px"), tipoSeg = el("div"), hint = el("p", "", ""), lh = el("p", "", ""), dh = el("p", "", "");
+          tipoSeg.className = "seg"; hint.className = "meta"; lh.className = "meta"; dh.className = "meta";
+          const idt = el("input"); idt.type = "date"; idt.max = today; idt.value = st.data; idt.oninput = () => { st.data = idt.value; refresh(); };
+          const tb = ["Positivo", "Negativo"].map(nm => { const b = el("button", nm); b.type = "button"; b.setAttribute("aria-pressed", st.tipo === nm); b.onclick = () => { st.tipo = nm; tb.forEach(x => x.setAttribute("aria-pressed", x.textContent === nm)); refresh(); }; return b; });
+          tb.forEach(b => tipoSeg.append(b));
+          const ip = el("input"); ip.type = "text"; ip.value = st.prodotto; ip.autocomplete = "off";
+          const it2 = el("input"); it2.type = "number"; it2.step = "0.1"; it2.inputMode = "decimal"; it2.value = st.temp === null ? "" : st.temp;
+          const il = el("input"); il.type = "text"; il.value = st.lotto; il.autocomplete = "off"; il.autocapitalize = "characters";
+          const cl = el("span"), cseg = el("div"); cseg.className = "seg"; cseg.style.marginBottom = "0";
+          const cb = ["Sì", "No"].map(nm => { const b = el("button", nm); b.type = "button"; b.setAttribute("aria-pressed", st.conf === nm); b.onclick = () => { st.conf = nm; cb.forEach(x => x.setAttribute("aria-pressed", x.textContent === nm)); }; return b; });
+          cb.forEach(b => cseg.append(b));
+          const cq = el("div"); cq.className = "cq"; cq.append(cl, cseg); cq.hidden = true;
+          const tl = lab("Temperatura iniziale (°C)", it2); let auto = false, pconf = "Sì";
+          const pb = el("div"), pchk = el("input"), pll = el("label"); pchk.type = "checkbox"; pchk.checked = true; pll.className = "chk"; pll.append(pchk, document.createTextNode(" Prima l’ho abbattuto in positivo fino a +4 °C: scrivi anche la scheda positiva"));
+          const ipp = el("input"); ipp.type = "number"; ipp.step = "0.1"; ipp.inputMode = "decimal";
+          const pcseg = el("div"); pcseg.className = "seg"; pcseg.style.marginBottom = "0";
+          const pcb = ["Sì", "No"].map(nm => { const b = el("button", nm); b.type = "button"; b.setAttribute("aria-pressed", nm === "Sì"); b.onclick = () => { st.confPos = nm; pcb.forEach(x => x.setAttribute("aria-pressed", x.textContent === nm)); }; return b; });
+          pcb.forEach(b => pcseg.append(b)); st.confPos = "Sì";
+          const pcq = el("div"); pcq.className = "cq"; pcq.append(el("span", "Positivo: raggiunta la temperatura prevista dal piano HACCP"), pcseg); pcq.hidden = true;
+          const pf = el("div"); pf.append(lab("Temperatura iniziale del positivo (°C)", ipp), pcq); pb.append(pll, pf);
+          pchk.onchange = () => { st.posFirst = pchk.checked; refresh(); };
+          ipp.oninput = () => { st.tempPos = ipp.value === "" ? null : parseFloat(ipp.value); };
+          function refresh(){
+            const on = st.tipo === "Negativo" && st.posFirst;
+            pb.hidden = st.tipo !== "Negativo"; pf.hidden = !on;
+            tl.firstChild.textContent = on ? "Temperatura iniziale del negativo (°C), di solito +4" : "Temperatura iniziale (°C)";
+            if (on && st.temp === null){ st.temp = 4; it2.value = 4; auto = true; }
+            if (!on && auto){ st.temp = null; it2.value = ""; auto = false; }
+            dh.textContent = st.data && st.data < today ? "Giorno passato: sul registro comparirà “inserito in ritardo”. Registra solo abbattimenti fatti davvero." : "";
+            cl.textContent = st.tipo === "Negativo" ? "Raggiunti −18 °C al cuore entro 4 ore" : "Raggiunta la temperatura prevista dal piano HACCP";
+            hint.textContent = st.tipo === "Negativo" && !st.posFirst && st.temp !== null && st.temp < 65 ? "Sul vostro foglio la temperatura di inizio è 65 °C o più: controlla il valore." : "";
+            lh.textContent = st.lotto && !st.touched ? "Lotto preso dall’ultimo arrivo di questo prodotto: controlla che sia giusto." : (!st.lotto ? "Nessun lotto trovato in Merce in arrivo: scrivilo a mano se serve." : "");
+          }
+          ip.oninput = () => { st.prodotto = ip.value; if (!st.touched){ const e = findLot(ip.value); st.lotto = e ? e.lotto : ""; il.value = st.lotto; } refresh(); };
+          il.oninput = () => { st.touched = true; st.lotto = il.value; refresh(); };
+          it2.oninput = () => { auto = false; st.temp = it2.value === "" ? null : parseFloat(it2.value); refresh(); };
+          refresh();
+          box.append(tipoSeg, lab("Data", idt), dh, lab("Prodotto", ip), pb, tl, hint, lab("Lotto", il), lh, cq);
+          card.append(box);
+        }, valid: () => !st.data ? "Indica la data." : st.data > today ? "La data non può essere futura." : !st.tipo ? "Scegli abbattimento positivo o negativo." : !st.prodotto.trim() ? "Scrivi il prodotto." : (st.temp === null || isNaN(st.temp)) ? "Inserisci la temperatura iniziale." : (st.tipo === "Negativo" && st.posFirst && (st.tempPos === null || isNaN(st.tempPos))) ? "Inserisci la temperatura iniziale del positivo." : !st.conf ? "Indica se l’abbattimento è conforme." : "",
+        run: () => { const lotto = st.lotto.trim(), prodotto = st.prodotto.trim(); if (st.tipo === "Negativo" && st.posFirst){ abb.push({t: Date.now() - 1, data: st.data, tipo: "Positivo", prodotto, temp: st.tempPos, lotto, firma: who, conf: st.confPos}); if (st.confPos === "No") addNc(st.data, "Abbattimento positivo non conforme: " + prodotto + (lotto ? " (lotto " + lotto + ")" : ""), ""); } abb.push({t: Date.now(), data: st.data, tipo: st.tipo, prodotto, temp: st.temp, lotto, firma: who, conf: st.conf}); save(AKEY, abb); if (st.conf === "No") addNc(st.data, "Abbattimento " + st.tipo.toLowerCase() + " non conforme: " + prodotto + (lotto ? " (lotto " + lotto + ")" : ""), ""); renderAbb(); }};
+      }
+      if (it.k === "t"){
+        const nm = it.id === "z1" ? "Freezer 1" : "Freezer 2", label = nm + ": " + fmtN(it.v) + " °C, " + fase.toLowerCase();
+        if (it.v < -50 || it.v > 100) return {label, skip: "valore poco credibile, ripeti"};
+        if (it.v > -18) return {label, skip: "fuori limite (serve −18 °C o meno): registrala dalla scheda Temperature con l’azione correttiva"};
+        return {label, run: () => window.tempApi.add({t: Date.now(), data: today, late: false, dev: it.id, v: it.v, op: who, out: false, note: "", fase})};
+      }
+      const label = "Pulizia " + {g: "giornaliera", s: "settimanale", m: "mensile"}[it.task] + ", " + it.rep;
+      const mine = pul.filter(e => e.rep === it.rep && e.task === it.task && !e.nr);
+      if (it.task === "g"){ if (mine.some(e => e.data === today)) return {label, skip: "già segnata oggi"}; }
+      else { const l = mine.sort((a, b) => a.data < b.data ? 1 : -1)[0]; if (l){ const due = it.task === "s" ? addDays(l.data, 7) : addMonths(l.data); if (diffD(today, due) > 0) return {label, skip: "già fatta il " + dmy(l.data) + ", prossima entro " + dmy(due)}; } }
+      return {label, run: () => { pul.push({t: Date.now(), rep: it.rep, task: it.task, data: today, firma: who}); save(PKEY, pul); }};
+    });
+  }
+  const btn = $("voxBtn"), txt = $("voxText"), panel = $("voxPanel");
+  const el = (tag, text, css) => { const x = document.createElement(tag); if (text) x.textContent = text; if (css) x.style.cssText = css; return x; };
+  function say(m){ txt.hidden = !m; txt.textContent = m || ""; }
+  function showPanel(raw){
+    const pl = plan(raw), card = el("div"); card.className = "tk";
+    card.append(el("b", pl.length ? "Ho capito:" : "Non ho capito un comando."), el("small", "«" + raw + "»"));
+    if (!pl.length) card.append(el("div", "Prova così: “freezer uno meno ventuno”, “pulizia giornaliera cucina fatta”, “abbattimento negativo polpette il 13”, “merce in arrivo carne lotto…”.", "margin-top:8px"));
+    pl.forEach(p => { if (p.ui){ card.append(el("div", p.label, "margin-top:10px;font-weight:600")); p.ui(card); } else card.append(el("div", (p.run ? "Registro: " : "Non registro: ") + p.label + (p.skip ? " (" + p.skip + ")" : ""), "margin-top:8px;" + (p.run ? "" : "color:var(--warn)"))); });
+    const err = el("p", "", "color:var(--warn);font-weight:600;margin:10px 0 0"); card.append(err);
+    const row = el("div"); row.className = "row"; row.style.marginTop = "12px";
+    const todo = pl.filter(p => p.run), openOnly = todo.length > 0 && todo.every(p => p.open);
+    if (todo.length){
+      const ok = el("button", openOnly ? "Apri il modulo con questi dati" : "Conferma e registra"); ok.type = "button"; ok.className = "p";
+      ok.onclick = () => {
+        const bad = todo.map(p => p.valid ? p.valid() : "").find(Boolean);
+        if (bad){ err.textContent = bad; return; }
+        const msgs = todo.map(p => p.run()).filter(x => typeof x === "string"), n = todo.filter(p => !p.open).length;
+        renderPul(); panel.textContent = "";
+        const d2 = el("div", msgs.length ? msgs.join(" ") : "Registrato: " + n + (n === 1 ? " voce." : " voci.") + " Controlla nelle schede."); d2.className = "tk"; panel.append(d2);
+      };
+      row.append(ok);
+    }
+    const no = el("button", todo.length ? "Annulla" : "Chiudi"); no.type = "button"; no.onclick = () => { panel.hidden = true; panel.textContent = ""; };
+    row.append(no); card.append(row);
+    panel.textContent = ""; panel.append(card); panel.hidden = false;
+  }
+  $("voxGo").onclick = () => { const r = $("voxIn").value.trim(); if (!r){ say("Scrivi o detta un comando nel campo."); return; } say(""); showPanel(r); };
+  $("voxIn").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); $("voxGo").click(); } });
+  let d = null, buf = "", timer = null, handled = true;
+  const arm = ms => { clearTimeout(timer); timer = setTimeout(() => { if (d) d.stop().catch(() => {}); }, ms); };
+  (async () => {
+    try { d = await claude.use("dictation"); } catch(e){ d = null; }
+    if (!d) return;
+    btn.hidden = false;
+    d.onPartial(({text}) => { if (text){ say("Sento: " + (buf + " " + text).trim()); arm(2500); } });
+    d.onFinal(({text}) => { buf += text; say("Sento: " + buf.trim()); arm(2500); });
+    d.onState(({state, reason}) => {
+      btn.textContent = state === "idle" ? "Comando vocale: tocca e parla" : state === "starting" ? "Apro il microfono…" : state === "listening" ? "Ti ascolto… tocca per finire" : "Un attimo…";
+      if (state === "listening") arm(12000);
+      if (state !== "idle") return;
+      clearTimeout(timer);
+      if (reason === "not_granted" || reason === "dismissed" || reason === "unavailable"){ handled = true; return; }
+      if (reason === "rate_limited" || reason === "upstream_error"){ handled = true; say("Il microfono ha avuto un problema. Riprova tra poco o scrivi a mano."); return; }
+      setTimeout(() => {
+        if (handled) return; handled = true;
+        const raw = buf.trim();
+        if (!raw){ say("Non ho sentito niente. Riprova."); return; }
+        say(""); showPanel(raw);
+      }, 400);
+    });
+    btn.onclick = () => {
+      if (d.active()){ d.stop().catch(() => {}); return; }
+      buf = ""; handled = false; say(""); panel.hidden = true;
+      d.start({language: "it"}).catch(err => { handled = true; say(err && err.code === "not_granted" ? "Microfono non consentito: puoi cambiarlo dal menu Permessi della pagina." : err && err.code === "unavailable" ? "Il comando vocale non è disponibile qui." : err && err.code === "stopped" ? "" : "Non sono riuscito ad avviare il microfono."); });
+    };
+  })();
+})();
+
+// --- Magazzino e Food cost
+(function(){
+const $ = id => document.getElementById(id);
+const MK = "haccp-mag-v1", PK = "haccp-magp-v1", FK = "haccp-fc-v1", RK = "haccp-ric-v1";
+function load(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } }
+function save(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+let mov = load(MK, []), prods = load(PK, {}), cfg = Object.assign({target: 30, iva: 10}, load(FK, {})), ric = load(RK, []);
+const today = () => ymd(Date.now());
+const key = s => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
+const nf = (v, d = 2) => v.toLocaleString("it-IT", {minimumFractionDigits: d, maximumFractionDigits: d});
+const eur = v => nf(v, 2) + " €";
+const qf = v => v.toLocaleString("it-IT", {maximumFractionDigits: 3});
+const ppu = (pb, base) => { const nd = x => nf(x, x < 0.01 ? 5 : 4); return base === "kg" ? nd(pb / 1000) + " €/g" : base === "l" ? nd(pb / 1000) + " €/ml" : eur(pb) + "/pz"; };
+const UF = {kg: {b: "kg", f: 1}, g: {b: "kg", f: .001}, l: {b: "l", f: 1}, ml: {b: "l", f: .001}, cl: {b: "l", f: .01}, pz: {b: "pz", f: 1}};
+const UM = ["kg", "g", "l", "ml", "cl", "pz"];
+const compat = b => UM.filter(u => UF[u].b === b);
+function normUm(u){ u = (u || "").toLowerCase().replace(/[.\s]/g, ""); if (UF[u]) return u; if (["gr", "grammi", "grammo"].includes(u)) return "g"; if (["lt", "ltr", "litri", "litro"].includes(u)) return "l"; if (["kgs", "kilo", "chilo", "chili"].includes(u)) return "kg"; return "pz"; }
+function toNum(v){ if (typeof v === "number") return isFinite(v) ? v : null; if (v == null || v === "") return null; let s = String(v).replace(/[^\d,.\-]/g, ""); if (!s) return null; if (s.includes(",")) s = s.replace(/\./g, "").replace(",", "."); const n = parseFloat(s); return isNaN(n) ? null : n; }
+function pDate(s){ const m = /(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/.exec(s || ""); if (!m) return ""; let y = +m[3]; if (y < 100) y += 2000; return y + "-" + String(+m[2]).padStart(2, "0") + "-" + String(+m[1]).padStart(2, "0"); }
+function h(tag, a, ...kids){
+  const e = document.createElement(tag); let val;
+  if (a) for (const k in a){ if (a[k] == null) continue; if (k === "class") e.className = a[k]; else if (k === "text") e.textContent = a[k]; else if (k === "value") val = a[k]; else if (k.startsWith("on")) e[k] = a[k]; else e.setAttribute(k, a[k]); }
+  kids.flat().forEach(c => { if (c == null || c === false) return; e.append(c.nodeType ? c : document.createTextNode(c)); });
+  if (val !== undefined) e.value = val;
+  return e;
+}
+const lab = (t, inp) => h("label", {class: "f"}, t, inp);
+const numIn = (v, on, ph) => h("input", {type: "number", step: "any", inputmode: "decimal", value: v == null ? "" : v, placeholder: ph || "", oninput: ev => on(ev.target.value === "" ? null : parseFloat(ev.target.value))});
+const umSel = (list, v, on) => h("select", {value: v, onchange: ev => on(ev.target.value)}, list.map(u => h("option", {value: u, text: u})));
+const stock = k => mov.filter(m => m.k === k).reduce((a, m) => a + (m.tipo === "scarico" ? -m.q : m.q), 0);
+const carichi = k => mov.filter(m => m.k === k && m.tipo === "carico").sort((a, b) => a.data < b.data ? 1 : a.data > b.data ? -1 : b.t - a.t);
+const lastP = k => carichi(k).find(m => m.p != null) || null;
+function similar(name){ const k = key(name); if (k.length < 3 || prods[k]) return null; const ks = Object.keys(prods); const f = ks.find(x => (k.length >= 4 && x.includes(k)) || (x.length >= 4 && k.includes(x))) || ks.find(x => { const a = x.split(" ")[0], b = k.split(" ")[0]; return a.length >= 5 && a === b; }); return f ? prods[f] : null; }
+const saveAll = () => { save(MK, mov); save(PK, prods); };
+function fillProdList(){ const dl = $("mgProdList"); dl.textContent = ""; Object.values(prods).sort((a, b) => a.nome.localeCompare(b.nome, "it")).forEach(p => dl.append(h("option", {value: p.nome}))); }
+
+// ---------- Magazzino
+let sub = "g", open = null, rev = null, selP = "", edP = null;
+["g", "c", "p", "s", "f"].forEach(t => { $("mgB_" + t).onclick = () => { sub = t; renderMag(); }; });
+function renderMag(){
+  ["g", "c", "p", "s", "f"].forEach(t => { $("mg_" + t).hidden = t !== sub; $("mgB_" + t).setAttribute("aria-pressed", t === sub); });
+  fillProdList();
+  if (sub === "g") renderStock(); if (sub === "c") renderRev(); if (sub === "p") renderPrezzi(); if (sub === "s") renderSpesa(); if (sub === "f") renderForn();
+}
+$("mg_q").addEventListener("input", renderStock);
+function renderStock(){
+  const box = $("mg_gl"); box.textContent = "";
+  const q = key($("mg_q").value), all = Object.keys(prods);
+  $("mg_empty").hidden = all.length > 0;
+  all.filter(k => !q || k.includes(q)).sort((a, b) => prods[a].nome.localeCompare(prods[b].nome, "it")).forEach(k => {
+    const p = prods[k], s = stock(k), lp = lastP(k), low = p.min > 0 && s < p.min;
+    const card = h("div", {class: "tk"}, h("b", {text: p.nome}),
+      h("p", {class: "s " + (s < 0 || low ? "bad" : "ok"), text: "Giacenza: " + qf(s) + " " + p.um + (p.min > 0 ? " · minima " + qf(p.min) + " " + p.um : "") + (s < 0 ? " (controlla: scarichi superiori ai carichi)" : low ? " · sotto scorta" : "")}),
+      h("small", {text: lp ? "Ultimo prezzo: " + eur(lp.p) + " / " + p.um + " = " + ppu(lp.p, p.um) + (lp.forn ? " · " + lp.forn : "") + " · " + dmy(lp.data) : "Prezzo non registrato"}));
+    const tg = m => () => { open = open && open.k === k && open.mode === m ? null : {k, mode: m}; renderStock(); };
+    card.append(h("div", {class: "row"}, h("button", {type: "button", text: "Usato", onclick: tg("u")}), h("button", {type: "button", text: "Conto", onclick: tg("c")}), h("button", {type: "button", text: "Minima", onclick: tg("m")})));
+    if (open && open.k === k){
+      let v = null, u = p.um; const err = h("p", {class: "s bad"});
+      const sel = umSel(compat(p.um), p.um, x => { u = x; });
+      const go = h("button", {type: "button", class: "p", text: open.mode === "u" ? "Registra uso" : open.mode === "c" ? "Salva conteggio" : "Salva minima"});
+      go.onclick = () => {
+        if (v == null || v < 0 || (open.mode === "u" && v === 0)){ err.textContent = "Inserisci una quantità."; return; }
+        const qb = v * UF[u].f;
+        if (open.mode === "u") mov.push({id: Date.now() + "u", t: Date.now(), data: today(), tipo: "scarico", k, nome: p.nome, q: qb, p: null, forn: "", doc: ""});
+        else if (open.mode === "c"){ const d = qb - stock(k); if (Math.abs(d) > 1e-9) mov.push({id: Date.now() + "r", t: Date.now(), data: today(), tipo: "rettifica", k, nome: p.nome, q: d, p: null, forn: "", doc: "inventario"}); }
+        else p.min = qb;
+        saveAll(); open = null; renderStock();
+      };
+      card.append(h("div", {style: "margin-top:10px"}, h("div", {class: "row"}, lab(open.mode === "u" ? "Quantità usata" : open.mode === "c" ? "Quantità contata ora" : "Scorta minima", numIn(null, x => { v = x; })), lab("Unità", sel)), err, go));
+    }
+    box.append(card);
+  });
+}
+
+// ---------- Carico da bolla
+function setMsg(m, err){ const s = $("mg_st"); s.textContent = m; s.style.color = err ? "var(--warn)" : ""; }
+async function shrinkDoc(file){
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(1, 2400 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas"); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  return new Promise(r => c.toBlob(r, "image/jpeg", 0.88));
+}
+const newRev = () => ({forn: "", data: today(), doc: "", righe: [], ok: false, anag: {}});
+const newRiga = () => ({nome: "", q: null, um: "kg", p: null, tot: null, warn: ""});
+$("mg_man").onclick = () => { if (!rev) rev = newRev(); rev.righe.push(newRiga()); setMsg(""); renderRev(); };
+async function readDoc(f){
+  if (!f) return;
+  setMsg("Sto leggendo il documento…");
+  let blob; try { blob = await shrinkDoc(f); } catch(e){ setMsg("Non riesco ad aprire la foto. Riprova.", true); return; }
+  try {
+    if (!sample) throw new Error("nosample");
+    const lim = await sample.limits(); if (!lim.images) throw new Error("noimg");
+    const prompt = "Sei un assistente per un ristorante italiano. L’immagine è una bolla di consegna (DDT) o una fattura di un fornitore alimentare. Rispondi SOLO con un oggetto JSON con le chiavi: fornitore (nome dell’azienda che vende), partita_iva, indirizzo, telefono, email, iban (tutti e solo del FORNITORE, cioè di chi vende, mai del cliente o del destinatario; null se non stampati), numero (numero del documento), data (GG/MM/AAAA), righe. “righe” è un array con un oggetto per ogni prodotto, con le chiavi: descrizione, quantita (numero stampato nella colonna quantità), um (solo una tra kg, g, l, ml, cl, pz; usa pz per pezzi, confezioni, cartoni, colli), formato_quantita (solo se la descrizione dice quanto contiene ogni confezione o pezzo, per esempio “500 g”, “1 litro”, “100 pezzi”: scrivi solo il numero; altrimenti null), formato_um (l’unità di quel contenuto, una tra kg, g, l, ml, cl, pz; altrimenti null), prezzo_unitario (numero, prezzo SENZA IVA per quella unità di misura), totale (numero, importo della riga senza IVA). Se un dato non è leggibile o non c’è (per esempio una bolla senza prezzi) usa null. Non inventare nessun numero e non calcolare nulla: copia quello che è stampato.";
+    const d = await sample.json(prompt, {images: [blob], modelTier: "default"}) || {};
+    if (!rev) rev = newRev(); rev.ok = false;
+    if (d.fornitore && !rev.forn) rev.forn = String(d.fornitore).trim();
+    rev.anag = rev.anag || {};
+    [["piva", d.partita_iva], ["ind", d.indirizzo], ["tel", d.telefono], ["email", d.email], ["iban", d.iban]].forEach(([f, v]) => { v = v == null ? "" : String(v).trim(); if (v && !rev.anag[f]) rev.anag[f] = v; });
+    if (d.numero && !rev.doc) rev.doc = String(d.numero).trim();
+    const dd = pDate(d.data); if (dd && dd <= today()) rev.data = dd;
+    (Array.isArray(d.righe) ? d.righe : []).forEach(x => {
+      const r = newRiga(); r.nome = String(x.descrizione || "").trim(); r.q = toNum(x.quantita); r.um = normUm(x.um); r.p = toNum(x.prezzo_unitario); r.tot = toNum(x.totale);
+      const fq = toNum(x.formato_quantita), fu = x.formato_um ? normUm(x.formato_um) : null;
+      if (fq > 0 && fu && r.um === "pz" && r.q > 0){
+        const f = UF[fu], packs = r.q, qb = packs * fq * f.f;
+        r.fmt = qf(packs) + " × " + qf(fq) + " " + fu + " = " + qf(qb) + " " + f.b;
+        r.q = qb; r.um = f.b; if (r.p != null) r.p = r.p / (fq * f.f);
+      }
+      if (r.p == null && r.tot != null && r.q > 0) r.p = r.tot / r.q;
+      if (r.p != null && r.q != null && r.tot != null && Math.abs(r.q * r.p - r.tot) > Math.max(0.05, r.tot * 0.03)) r.warn = "Quantità × prezzo non torna con il totale riga (" + eur(r.tot) + "): controlla.";
+      const ex = prods[key(r.nome)]; if (ex) r.nome = ex.nome;
+      if (r.nome || r.q != null) rev.righe.push(r);
+    });
+    setMsg(rev.righe.length ? "Letto. Controlla ogni riga prima di caricare: la lettura di numeri e prezzi può sbagliare." : "Non ho trovato righe leggibili: aggiungile a mano o rifai la foto.", !rev.righe.length);
+  } catch(e){ if (!rev) rev = newRev(); setMsg("Lettura non riuscita: compila a mano o rifai la foto.", true); }
+  renderRev();
+}
+$("mg_file").addEventListener("change", ev => { const f = ev.target.files[0]; ev.target.value = ""; readDoc(f); });
+$("mg_gal").addEventListener("change", ev => { const f = ev.target.files[0]; ev.target.value = ""; readDoc(f); });
+function renderRev(){
+  const box = $("mg_rev"); box.textContent = "";
+  if (!rev) return;
+  const fl = $("fornList"); if (fl) sup.forEach(x => { if (![...fl.options].some(o => o.value === x.nome)) fl.append(h("option", {value: x.nome})); });
+  const top = h("div", {class: "tk"},
+    lab("Fornitore", h("input", {type: "text", list: "fornList", autocomplete: "off", value: rev.forn, oninput: ev => { rev.forn = ev.target.value; rev.ok = false; }})),
+    h("div", {class: "row"}, lab("Data documento", h("input", {type: "date", max: today(), value: rev.data, oninput: ev => { rev.data = ev.target.value; rev.ok = false; }})), lab("N. documento", h("input", {type: "text", autocomplete: "off", value: rev.doc, oninput: ev => { rev.doc = ev.target.value; rev.ok = false; }}))),
+    h("small", {text: "Prezzi senza IVA. Se la bolla dice “6 confezioni da 1 kg”, scrivi 6 kg. Una bolla senza prezzi si carica lo stesso: i prezzi li aggiungi poi dalla scheda Prezzi."}));
+  box.append(top);
+  rev.righe.forEach((r, i) => {
+    const tot = h("small"), hint = h("p", {class: "s bad"}), upd = () => {
+      tot.textContent = (r.fmt ? "Letto: " + r.fmt + " · " : "") + (r.q != null && r.p != null ? "Totale riga: " + eur(r.q * r.p) : "") + (r.p != null && r.p >= 0 ? (r.q != null ? " · " : "") + "Prezzo: " + ppu(r.p / UF[r.um].f, UF[r.um].b) : "");
+      const sm = r.nome && !prods[key(r.nome)] ? similar(r.nome) : null;
+      hint.textContent = ""; hint.append(r.warn || "");
+      if (sm){ hint.append((r.warn ? " " : "") + "Forse è «" + sm.nome + "», già in magazzino. "); hint.append(h("button", {type: "button", class: "mgx", text: "Usa «" + sm.nome + "»", onclick: () => { r.nome = sm.nome; renderRev(); }})); }
+    };
+    const card = h("div", {class: "tk"},
+      lab("Prodotto", h("input", {type: "text", list: "mgProdList", autocomplete: "off", value: r.nome, oninput: ev => { r.nome = ev.target.value; r.warn = ""; rev.ok = false; upd(); }})),
+      h("div", {class: "mg3"}, lab("Quantità", numIn(r.q, v => { r.q = v; r.warn = ""; rev.ok = false; upd(); })), lab("Unità", umSel(UM, r.um, v => { r.um = v; rev.ok = false; })), lab("€ per unità", numIn(r.p, v => { r.p = v; r.warn = ""; rev.ok = false; upd(); }, "senza IVA"))),
+      tot, hint, h("button", {type: "button", class: "mgx", text: "Togli riga", onclick: () => { rev.righe.splice(i, 1); renderRev(); }}));
+    box.append(card); upd();
+  });
+  const msg = h("p", {class: "s bad", id: "mg_rm"});
+  box.append(h("button", {type: "button", text: "Aggiungi riga", style: "width:100%;margin-bottom:10px", onclick: () => { rev.righe.push(newRiga()); renderRev(); }}), msg);
+  const go = h("button", {type: "button", class: "p", text: "Carica in magazzino"});
+  go.onclick = () => {
+    const rows = rev.righe.filter(r => r.nome.trim() || r.q != null);
+    if (!rows.length){ msg.textContent = "Non ci sono righe da caricare."; return; }
+    if (!rev.forn.trim()){ msg.textContent = "Scrivi il fornitore."; return; }
+    if (!rev.data || rev.data > today()){ msg.textContent = "Controlla la data del documento."; return; }
+    for (const r of rows){
+      if (!r.nome.trim() || !(r.q > 0)){ msg.textContent = "Ogni riga ha bisogno di prodotto e quantità maggiore di zero."; return; }
+      const ex = prods[key(r.nome)]; if (ex && ex.um !== UF[r.um].b){ msg.textContent = "«" + ex.nome + "» è gestito in " + ex.um + ": cambia l’unità della riga."; return; }
+    }
+    if (!rev.ok){
+      const w = [];
+      if (rev.doc.trim() && mov.some(m => m.tipo === "carico" && m.doc === rev.doc.trim() && key(m.forn) === key(rev.forn))) w.push("Questo documento sembra già caricato.");
+      rows.forEach(r => { if (r.warn) w.push(r.nome + ": " + r.warn); });
+      rows.forEach(r => { const k = key(r.nome), lp = prods[k] ? lastP(k) : null; if (r.p != null && lp){ const pb = r.p / UF[r.um].f; if (Math.abs(pb - lp.p) / lp.p > 0.3) w.push(r.nome + ": prezzo molto diverso dall’ultimo (" + eur(lp.p) + " / " + prods[k].um + ")."); } });
+      if (w.length){ rev.ok = true; msg.textContent = w.join(" ") + " Se è tutto giusto, premi di nuovo “Carica in magazzino”."; return; }
+    }
+    const t = Date.now();
+    rows.forEach((r, i) => {
+      const k = key(r.nome), b = UF[r.um].b;
+      if (!prods[k]) prods[k] = {nome: r.nome.trim(), um: b, min: 0};
+      mov.push({id: t + "c" + i, t, data: rev.data, tipo: "carico", k, nome: prods[k].nome, q: r.q * UF[r.um].f, p: r.p != null ? r.p / UF[r.um].f : null, forn: rev.forn.trim(), doc: rev.doc.trim()});
+    });
+    saveAll(); const n = rows.length, up = upsertSup(rev.forn.trim(), rev.anag || {});
+    rev = null; setMsg("Caricate " + n + (n === 1 ? " riga" : " righe") + " in magazzino. " + (up.nuovo ? "Creata la scheda del fornitore." : up.agg.length ? "Aggiornata la scheda del fornitore (" + up.agg.join(", ") + ")." : "") + (up.diffs.length ? " Attenzione: " + up.diffs.join(", ") + " diverso da quello salvato: controlla nella scheda Fornitori." : "")); renderRev();
+  };
+  box.append(go, h("button", {type: "button", text: "Annulla", style: "width:100%;margin-top:10px", onclick: () => { rev = null; setMsg(""); renderRev(); }}));
+}
+
+// ---------- Prezzi
+$("mg_pq").addEventListener("input", () => { selP = key($("mg_pq").value); edP = null; renderPrezzi(); });
+function renderPrezzi(){
+  const det = $("mg_pd"), lst = $("mg_pl"); det.textContent = ""; lst.textContent = "";
+  const p = prods[selP];
+  if (p){
+    const cs = carichi(selP).filter(m => m.p != null), ps = cs.map(m => m.p);
+    const card = h("div", {class: "tk"}, h("b", {text: p.nome}));
+    if (ps.length){
+      card.append(h("small", {text: "Ultimo " + eur(ps[0]) + " (" + ppu(ps[0], p.um) + ") · minimo " + eur(Math.min(...ps)) + " · massimo " + eur(Math.max(...ps)) + " (per " + p.um + ")"}));
+      const by = {}; cs.forEach(m => { const f = m.forn || "—"; if (!by[f]) by[f] = m; });
+      const arr = Object.values(by).sort((a, b) => a.p - b.p);
+      if (arr.length > 1) card.append(h("p", {class: "s"}, "Per fornitore (ultimo prezzo): ", arr.map((m, i) => h("span", {class: i === 0 ? "best" : "", text: (m.forn || "—") + " " + eur(m.p) + (i === 0 ? " (più basso)" : "") + (i < arr.length - 1 ? " · " : "")}))));
+    } else card.append(h("small", {text: "Nessun prezzo registrato per questo prodotto."}));
+    const tb = h("table", null, h("tr", null, ["Data", "Fornitore", "Quantità", "Prezzo", ""].map(x => h("th", {text: x}))));
+    carichi(selP).forEach(m => {
+      const td = h("td");
+      if (edP === m.id){
+        let v = m.p; td.append(numIn(v, x => { v = x; }, "€/" + p.um), h("button", {type: "button", class: "mgx", text: "Salva", onclick: () => { m.p = v; edP = null; saveAll(); renderPrezzi(); }}));
+      } else td.append(h("button", {type: "button", class: "mgx", text: m.p == null ? "Aggiungi" : "Correggi", onclick: () => { edP = m.id; renderPrezzi(); }}));
+      tb.append(h("tr", null, h("td", {text: dmy(m.data)}), h("td", {text: m.forn || "—"}), h("td", {text: qf(m.q) + " " + p.um}), h("td", {text: m.p == null ? "—" : eur(m.p)}), td));
+    });
+    card.append(tb); det.append(card);
+  }
+  Object.keys(prods).sort((a, b) => prods[a].nome.localeCompare(prods[b].nome, "it")).forEach(k => {
+    const pr = prods[k], cs = carichi(k).filter(m => m.p != null), lp = cs[0], pv = cs[1];
+    let tr = ""; if (lp && pv && pv.p > 0){ const d = (lp.p - pv.p) / pv.p * 100; if (Math.abs(d) >= 0.5) tr = (d > 0 ? " ▲ +" : " ▼ ") + nf(d, 1) + "%"; }
+    lst.append(h("div", {class: "tk"}, h("b", {text: pr.nome}), h("small", {text: lp ? eur(lp.p) + " / " + pr.um + " = " + ppu(lp.p, pr.um) + tr : "Prezzo non registrato"}), h("button", {type: "button", class: "mgx", text: "Storico e fornitori", style: "margin-top:8px", onclick: () => { selP = k; $("mg_pq").value = pr.nome; edP = null; renderPrezzi(); window.scrollTo(0, 0); }})));
+  });
+  if (!Object.keys(prods).length) lst.append(h("p", {class: "empty", text: "Nessun prodotto: carica una bolla."}));
+}
+
+// ---------- Lista spesa
+function renderSpesa(){
+  const box = $("mg_sl"); box.textContent = "";
+  const low = Object.keys(prods).filter(k => (prods[k].min > 0 && stock(k) < prods[k].min) || prods[k].ord);
+  if (!low.length){ box.append(h("p", {class: "empty", text: Object.values(prods).some(p => p.min > 0) ? "Niente da ordinare." : "Nessuna scorta minima impostata e nessun prodotto segnato da ordinare."})); return; }
+  const by = {};
+  low.forEach(k => { const c = carichi(k)[0], f = (c && c.forn) || "Fornitore non noto"; (by[f] = by[f] || []).push(k); });
+  let text = "";
+  Object.keys(by).sort().forEach(f => {
+    text += f + "\n";
+    const card = h("div", {class: "tk"}, h("b", {text: f}));
+    by[f].forEach(k => { const p = prods[k], s = stock(k), isLow = p.min > 0 && s < p.min, line = isLow ? p.nome + ": mancano " + qf(p.min - s) + " " + p.um : p.nome + ": da ordinare"; text += "- " + line + "\n"; card.append(h("small", {text: line + " (giacenza " + qf(s) + " " + p.um + (p.min > 0 ? ", minima " + qf(p.min) : "") + ")"})); if (p.ord) card.append(h("button", {type: "button", class: "mgx", text: "Ordinato", onclick: () => { p.ord = false; saveAll(); renderSpesa(); }})); });
+    box.append(card); text += "\n";
+  });
+  const ta = h("textarea", {readonly: "readonly", rows: "8", value: text.trim()});
+  const st = h("p", {class: "meta"});
+  box.append(h("label", {class: "f"}, "Elenco da copiare", ta), h("button", {type: "button", class: "p", text: "Copia elenco", onclick: async () => { try { await navigator.clipboard.writeText(ta.value); st.textContent = "Copiato."; } catch(e){ ta.focus(); ta.select(); st.textContent = "Tieni premuto sul testo e scegli Copia."; } }}), st);
+}
+
+// ---------- Fornitori
+const SUK = "haccp-forn-v1";
+let sup = load(SUK, []), fEd = null, fDel = null;
+const digits = s => (s || "").replace(/\D/g, "");
+const ibanN = s => (s || "").replace(/\s/g, "").toUpperCase();
+const fk = n => key(n).replace(/[^a-z0-9 ]/g, " ").replace(/\b(spa|srl|snc|sas|sapa|srls|s p a|s r l)\b/g, " ").replace(/\s+/g, " ").trim();
+function ibanOk(x){ x = ibanN(x); if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(x)) return false; if (x.startsWith("IT") && x.length !== 27) return false; const r = x.slice(4) + x.slice(0, 4); let rem = 0; for (const c of r){ const t = /\d/.test(c) ? c : String(c.charCodeAt(0) - 55); for (const d of t) rem = (rem * 10 + +d) % 97; } return rem === 1; }
+function pivaOk(x){ const d = digits(x); if (d.length !== 11) return false; let t = 0; for (let i = 0; i < 11; i++){ let c = +d[i]; if (i % 2 === 1){ c *= 2; if (c > 9) c -= 9; } t += c; } return t % 10 === 0; }
+const FIELDS = ["piva", "ind", "tel", "email", "iban"], FL = {piva: "Partita IVA", ind: "Indirizzo", tel: "Telefono", email: "Email", iban: "IBAN"};
+const same = (f, a, b) => f === "iban" ? ibanN(a) === ibanN(b) : f === "piva" ? digits(a) === digits(b) : key(a) === key(b);
+function findSup(nome, piva){ const d = digits(piva); let s = d.length === 11 ? sup.find(x => digits(x.piva) === d) : null; if (!s && nome){ const k = fk(nome); if (k) s = sup.find(x => fk(x.nome) === k); } return s || null; }
+function upsertSup(nome, an){
+  let s = findSup(nome, an.piva), nuovo = false; const agg = [], diffs = [];
+  if (!s){ if (!nome) return {nuovo: false, agg, diffs}; s = {id: Date.now().toString(36), nome, piva: "", ind: "", tel: "", email: "", ref: "", iban: "", pag: "", note: "", diff: {}}; sup.push(s); nuovo = true; }
+  s.diff = s.diff || {};
+  FIELDS.forEach(f => { const v = (an[f] || "").trim(); if (!v) return; if (!s[f]){ s[f] = v; agg.push(FL[f]); } else if (!same(f, s[f], v)){ s.diff[f] = v; diffs.push(FL[f]); } });
+  save(SUK, sup); return {s, nuovo, agg, diffs};
+}
+$("mg_fq").addEventListener("input", renderForn);
+$("mg_fnew").onclick = () => { fEd = {id: "", nome: "", piva: "", ind: "", tel: "", email: "", ref: "", iban: "", pag: "", note: "", diff: {}, _ok: false}; renderForn(); window.scrollTo(0, 0); };
+function renderForn(){
+  const box = $("mg_fl"), form = $("mg_ff");
+  $("mg_ftop").hidden = !!fEd; box.hidden = !!fEd; form.hidden = !fEd;
+  if (fEd){ renderFEd(); return; }
+  box.textContent = "";
+  const q = key($("mg_fq").value), cut = ymd(Date.now() - 30 * 864e5);
+  if (!sup.length) box.append(h("p", {class: "empty", text: "Nessun fornitore. Si creano da soli quando carichi una bolla o una fattura, oppure con “Nuovo fornitore”."}));
+  sup.filter(s => !q || key(s.nome + " " + s.piva).includes(q)).sort((a, b) => a.nome.localeCompare(b.nome, "it")).forEach(s => {
+    const card = h("div", {class: "tk"}, h("b", {text: s.nome}));
+    if (s.piva) card.append(h("small", {text: "P.IVA " + s.piva + (pivaOk(s.piva) ? "" : " · da controllare: non risulta valida")}));
+    if (s.ind) card.append(h("small", {text: s.ind}));
+    if (s.tel) card.append(h("small", null, "Tel. ", h("a", {href: "tel:" + s.tel.replace(/[^\d+]/g, ""), text: s.tel})));
+    if (s.email) card.append(h("small", null, h("a", {href: "mailto:" + s.email, text: s.email})));
+    if (s.ref) card.append(h("small", {text: "Referente: " + s.ref}));
+    if (s.pag) card.append(h("small", {text: "Pagamento: " + s.pag}));
+    if (s.iban) card.append(h("small", {style: ibanOk(s.iban) ? "" : "color:var(--warn);font-weight:600", text: "IBAN " + ibanN(s.iban).replace(/(.{4})/g, "$1 ").trim() + (ibanOk(s.iban) ? "" : " · da controllare: non risulta valido")}));
+    if (s.note) card.append(h("small", {text: s.note}));
+    const spent = mov.filter(m => m.tipo === "carico" && m.p != null && m.data >= cut && fk(m.forn) === fk(s.nome)).reduce((a, m) => a + m.q * m.p, 0);
+    if (spent > 0) card.append(h("small", {text: "Acquisti ultimi 30 giorni: " + eur(spent) + " (senza IVA)"}));
+    Object.keys(s.diff || {}).forEach(f => {
+      const nv = s.diff[f];
+      card.append(h("div", {class: "s bad", style: "margin-top:8px"}, FL[f] + " letto da un documento: " + nv + " (salvato: " + (s[f] || "—") + "). " + (f === "iban" ? "Prima di un bonifico a un IBAN cambiato conferma con il fornitore per telefono. " : ""),
+        h("div", {class: "row"}, h("button", {type: "button", text: "Usa il nuovo", onclick: () => { s[f] = nv; delete s.diff[f]; save(SUK, sup); renderForn(); }}), h("button", {type: "button", text: "Tieni quello salvato", onclick: () => { delete s.diff[f]; save(SUK, sup); renderForn(); }}))));
+    });
+    const row = h("div", {class: "row"}, h("button", {type: "button", text: "Modifica", onclick: () => { fEd = JSON.parse(JSON.stringify(s)); fEd._ok = false; fDel = null; renderForn(); window.scrollTo(0, 0); }}));
+    if (s.iban){ const cb = h("button", {type: "button", text: "Copia IBAN"}); cb.onclick = async () => { try { await navigator.clipboard.writeText(ibanN(s.iban)); cb.textContent = "Copiato"; } catch(e){ cb.textContent = ibanN(s.iban); } }; row.append(cb); }
+    row.append(h("button", {type: "button", text: fDel === s.id ? "Conferma: elimina" : "Elimina", onclick: () => { if (fDel === s.id){ sup = sup.filter(z => z.id !== s.id); save(SUK, sup); fDel = null; } else fDel = s.id; renderForn(); }}));
+    card.append(row); box.append(card);
+  });
+}
+function renderFEd(){
+  const f = $("mg_ff"); f.textContent = "";
+  const err = h("p", {class: "s bad"}), inp = (k, ph, type) => h("input", {type: type || "text", autocomplete: "off", value: fEd[k] || "", placeholder: ph || "", oninput: ev => { fEd[k] = ev.target.value; fEd._ok = false; }});
+  f.append(h("h2", {text: fEd.id ? "Modifica fornitore" : "Nuovo fornitore", style: "margin-top:0"}),
+    lab("Nome dell’azienda", inp("nome", "es. DAC S.p.A.")), lab("Partita IVA", inp("piva", "11 cifre")), lab("Indirizzo", inp("ind")), lab("Telefono", inp("tel", "", "tel")), lab("Email", inp("email", "", "email")),
+    lab("Referente o agente", inp("ref")), lab("IBAN per il bonifico", inp("iban", "IT00 X000 0000 0000 0000 0000 000")), lab("Condizioni di pagamento", inp("pag", "es. 30 giorni data fattura")), lab("Note", inp("note")), err);
+  f.append(h("button", {type: "button", class: "p", text: "Salva fornitore", onclick: () => {
+    if (!fEd.nome.trim()){ err.textContent = "Scrivi il nome dell’azienda."; return; }
+    const w = [];
+    if (fEd.piva.trim() && !pivaOk(fEd.piva)) w.push("La partita IVA non risulta valida.");
+    if (fEd.iban.trim() && !ibanOk(fEd.iban)) w.push("L’IBAN non risulta valido.");
+    if (w.length && !fEd._ok){ fEd._ok = true; err.textContent = w.join(" ") + " Controlla, oppure premi di nuovo per salvare comunque."; return; }
+    const o = JSON.parse(JSON.stringify(fEd)); delete o._ok; o.nome = o.nome.trim(); o.iban = ibanN(o.iban); o.diff = o.diff || {};
+    if (o.id) sup = sup.map(z => z.id === o.id ? o : z); else { o.id = Date.now().toString(36); sup.push(o); }
+    save(SUK, sup); fEd = null; renderForn();
+  }}), h("button", {type: "button", text: "Annulla", style: "width:100%;margin-top:10px", onclick: () => { fEd = null; renderForn(); }}));
+}
+
+// ---------- Ricette, Food cost, Menu
+const CK = "haccp-chk-v1";
+let chk = load(CK, {}), ed = null, delArm = null, mnSub = "p";
+const CATS = ["Antipasto", "Primo", "Secondo", "Contorno", "Dolce", "Altro"];
+function pk(name){ const k = key(name); if (prods[k]) return k; const sm = similar(name); return sm ? key(sm.nome) : null; }
+const MPK = "haccp-mprez-v1"; let mprez = load(MPK, {});
+function priceFor(g){
+  const k = pk(g.prodotto);
+  if (k){ const lp = lastP(k); if (lp) return {p: lp.p, b: prods[k].um, src: "magazzino"}; }
+  const m = mprez[k || key(g.prodotto)] || mprez[key(g.prodotto)];
+  return m ? {p: m.p, b: m.b, src: "inserito"} : null;
+}
+function costIngr(g){
+  if (!g.prodotto.trim() || g.q == null) return {err: "incompleto"};
+  const pr = priceFor(g);
+  if (!pr) return {err: "prezzo mancante"};
+  if (UF[g.um].b !== pr.b) return {err: "unità non compatibile: il prezzo è per " + pr.b + " (usa " + compat(pr.b).join(" o ") + ")"};
+  return {c: g.q * UF[g.um].f * pr.p, pr};
+}
+function costRic(r){ let tot = 0, miss = 0; r.ingr.forEach(g => { const c = costIngr(g); if (c.err) miss++; else tot += c.c; }); return {tot, miss, porz: tot / Math.max(1, r.porz || 1)}; }
+const netto = pr => pr / (1 + cfg.iva / 100);
+const umSelV = (v, on) => h("select", {value: String(v), onchange: ev => on(parseInt(ev.target.value, 10))}, [0, 1, 2, 3, 4, 5, 6, 7].map(g => h("option", {value: String(g), text: g === 0 ? "Il giorno del servizio" : g === 1 ? "1 giorno prima" : g + " giorni prima"})));
+const byNome = (a, b) => a.nome.localeCompare(b.nome, "it");
+
+// Food cost (solo lettura)
+$("fc_target").addEventListener("input", () => { const v = parseFloat($("fc_target").value); if (v > 0){ cfg.target = v; save(FK, cfg); renderFc(true); } });
+$("fc_iva").addEventListener("input", () => { const v = parseFloat($("fc_iva").value); if (v >= 0){ cfg.iva = v; save(FK, cfg); renderFc(true); } });
+$("fc_onlym").onchange = () => renderFc(true);
+function renderFc(keep){
+  if (!keep){ $("fc_target").value = cfg.target; $("fc_iva").value = cfg.iva; }
+  const box = $("fc_list"); box.textContent = "";
+  if (!ric.length){ box.append(h("p", {class: "empty", text: "Nessuna ricetta. Scrivile nella scheda Ricette: per avere i costi serve anche caricare le bolle nel Magazzino."})); return; }
+  const onlyM = $("fc_onlym").checked;
+  const list = ric.filter(r => !onlyM || r.menu).map(r => { const c = costRic(r), n = r.prezzo > 0 ? netto(r.prezzo) : null; return {r, c, n, fc: n ? c.porz / n * 100 : null}; });
+  const wm = list.filter(x => x.fc != null && x.r.menu);
+  if (wm.length) box.append(h("p", {class: "meta", text: "Food cost medio dei piatti in menu: " + nf(wm.reduce((a, x) => a + x.fc, 0) / wm.length, 1) + "% (" + wm.length + (wm.length === 1 ? " piatto con prezzo" : " piatti con prezzo") + ")."}));
+  list.sort((a, b) => (b.fc == null ? -1 : b.fc) - (a.fc == null ? -1 : a.fc)).forEach(({r, c, n, fc}) => {
+    const card = h("div", {class: "tk"}, h("b", {text: r.nome + (r.menu ? " · in menu" : "")}),
+      h("p", {class: "s" + (c.miss ? " bad" : ""), text: "Costo porzione: " + (c.miss ? "almeno " : "") + eur(c.porz) + " · " + r.porz + (r.porz === 1 ? " porzione" : " porzioni") + " · totale " + eur(c.tot)}));
+    if (c.miss) card.append(h("small", {class: "s bad", text: "Mancano dati per " + c.miss + (c.miss === 1 ? " ingrediente" : " ingredienti") + ": il costo è incompleto."}));
+    if (fc != null){
+      card.append(h("p", {class: "s " + (fc <= cfg.target ? "ok" : "bad"), text: "Vendita " + eur(r.prezzo) + " (netto " + eur(n) + ") → food cost " + (c.miss ? "almeno " : "") + nf(fc, 1) + "% (obiettivo " + nf(cfg.target, 0) + "%)"}));
+      if (c.porz > 0) card.append(h("small", {text: "Per stare al " + nf(cfg.target, 0) + "% venderesti a " + eur(c.porz / (cfg.target / 100) * (1 + cfg.iva / 100)) + " (IVA inclusa)."}));
+    } else card.append(h("small", {text: "Prezzo di vendita non indicato."}));
+    const d = h("details", null, h("summary", {text: "Ingredienti"}));
+    r.ingr.forEach(g => { const x = costIngr(g); d.append(h("div", {text: g.prodotto + " " + (g.q != null ? qf(g.q) + " " + g.um : "") + " — " + (x.err ? x.err : eur(x.c))})); });
+    card.append(d); box.append(card);
+  });
+}
+
+// Ricette (scrittura)
+function impSet(on){ $("ric_imp").hidden = !on; $("ric_top").hidden = on; $("ric_list").hidden = on; }
+$("ric_imp_btn").onclick = () => { impSet(true); $("imp_st").textContent = ""; window.scrollTo(0, 0); };
+$("imp_x").onclick = () => impSet(false);
+function toEd(d){
+  const pz = toNum(d.porzioni);
+  const ing = (Array.isArray(d.ingredienti) ? d.ingredienti : []).map(x => {
+    const nome = String(x.nome || "").trim(); let q = toNum(x.quantita), um = x.um ? normUm(x.um) : null;
+    if (!(q > 0) || !um){ q = null; um = "g"; }
+    const k = nome ? pk(nome) : null;
+    return {prodotto: k ? prods[k].nome : nome, q, um, nota: q == null ? String(x.originale || "").trim() : ""};
+  }).filter(g => g.prodotto);
+  return {id: "", nome: String(d.nome || "").trim(), cat: "Primo", porz: pz >= 1 ? Math.round(pz) : 1, prezzo: null, menu: false, proc: String(d.procedimento || "").trim(), ingr: ing.length ? ing : [{prodotto: "", q: null, um: "g"}], _imp: true, _pzOk: pz >= 1};
+}
+async function impRun(text, blob){
+  const st = $("imp_st"); st.style.color = "";
+  if (!sample){ st.textContent = "Lettura automatica non disponibile qui: usa “Nuova ricetta” e scrivi a mano."; st.style.color = "var(--warn)"; return; }
+  st.textContent = "Sto leggendo la ricetta…";
+  try {
+    if (blob){ const lim = await sample.limits(); if (!lim.images) throw new Error("noimg"); }
+    const prompt = "Sei un assistente per una cucina professionale italiana. Dal testo o dall’immagine di una ricetta rispondi SOLO con un oggetto JSON con le chiavi: nome (nome del piatto), porzioni (numero di porzioni o persone per cui sono le dosi; null se non indicato), ingredienti, procedimento. “ingredienti” è un array di oggetti con le chiavi: nome (solo l’ingrediente, senza note come “a temperatura ambiente” o “facoltativo”), quantita (numero), um (solo una tra kg, g, l, ml, cl, pz; usa pz per le cose a numero come le uova), originale (la riga come è scritta). Se la quantità è “q.b.”, “un pizzico”, in cucchiai o cucchiaini, o non è indicata: quantita null e um null, e non convertire in grammi. “procedimento” è un riassunto breve dei passaggi, in italiano, con parole tue, in passaggi numerati, senza copiare frasi intere. Non inventare nessun dato.";
+    const d = await sample.json(blob ? prompt : prompt + "\n\nTESTO DELLA RICETTA:\n" + text, blob ? {images: [blob], modelTier: "default"} : {modelTier: "default"});
+    const e = toEd(d || {});
+    e._step = "prezzi";
+    if (!e.nome && e.ingr.length === 1 && !e.ingr[0].prodotto){ st.textContent = "Non ho trovato una ricetta leggibile. Riprova con più testo o una foto più nitida."; st.style.color = "var(--warn)"; return; }
+    ed = e; impSet(false); renderRic(); window.scrollTo(0, 0);
+  } catch(err){ st.textContent = "Lettura non riuscita. Riprova, o scrivi la ricetta a mano."; st.style.color = "var(--warn)"; }
+}
+$("imp_gn").onclick = async () => {
+  const n = $("imp_n").value.trim(), st = $("imp_st"); st.style.color = "";
+  if (n.length < 3){ st.textContent = "Scrivi il nome della ricetta."; st.style.color = "var(--warn)"; return; }
+  if (!sample){ st.textContent = "Lettura automatica non disponibile qui."; st.style.color = "var(--warn)"; return; }
+  st.textContent = "Preparo la ricetta…";
+  try {
+    const prompt = "Sei un cuoco professionista italiano. Scrivi la ricetta classica di: " + n + ". Rispondi SOLO con un oggetto JSON con le chiavi: nome, porzioni (numero di porzioni per cui sono le dosi), ingredienti, procedimento. “ingredienti” è un array di oggetti con le chiavi: nome (solo l’ingrediente), quantita (numero), um (solo una tra kg, g, l, ml, cl, pz; pz per le cose a numero come le uova), originale (la riga come scritta). Usa grammi e millilitri, mai cucchiai; se una quantità è davvero a gusto metti quantita null e um null. “procedimento” è un riassunto breve in passaggi numerati.";
+    const d = await sample.json(prompt, {modelTier: "default"}), e = toEd(d || {});
+    if (!e.ingr.length || !e.ingr[0].prodotto){ st.textContent = "Non sono riuscito a preparare la ricetta. Riprova con un nome più preciso."; st.style.color = "var(--warn)"; return; }
+    e._gen = true; e._step = "prezzi"; ed = e; impSet(false); renderRic(); window.scrollTo(0, 0);
+  } catch(err){ st.textContent = "Non sono riuscito a preparare la ricetta. Riprova."; st.style.color = "var(--warn)"; }
+};
+$("imp_go").onclick = () => { const t = $("imp_t").value.trim(); if (t.length < 20){ $("imp_st").textContent = "Incolla il testo della ricetta."; $("imp_st").style.color = "var(--warn)"; return; } impRun(t, null); };
+["imp_f", "imp_c"].forEach(id => $(id).addEventListener("change", async ev => { const f = ev.target.files[0]; ev.target.value = ""; if (!f) return; let blob; try { blob = await shrinkDoc(f); } catch(e){ $("imp_st").textContent = "Non riesco ad aprire la foto."; return; } impRun("", blob); }));
+$("ric_new").onclick = () => { ed = {id: "", nome: "", cat: "Primo", porz: 1, prezzo: null, menu: false, proc: "", ingr: [{prodotto: "", q: null, um: "g"}]}; renderRic(); window.scrollTo(0, 0); };
+function renderRic(){
+  const list = $("ric_list"), form = $("ric_form");
+  $("ric_imp").hidden = true; $("ric_top").hidden = !!ed; list.hidden = !!ed; form.hidden = !ed;
+  if (ed){ renderEd(); return; }
+  list.textContent = "";
+  if (!ric.length) list.append(h("p", {class: "empty", text: "Nessuna ricetta. Premi “Nuova ricetta”."}));
+  ric.slice().sort(byNome).forEach(r => {
+    const card = h("div", {class: "tk"}, h("b", {text: r.nome}), h("small", {text: (r.cat || "Altro") + " · " + r.ingr.length + (r.ingr.length === 1 ? " ingrediente" : " ingredienti") + " · " + r.porz + (r.porz === 1 ? " porzione" : " porzioni") + (r.menu ? " · IN MENU" : "")}));
+    if (fasiSum(r)) card.append(h("small", {text: "Tempi: " + fasiSum(r)}));
+    if (r.proc){ const d = h("details", null, h("summary", {text: "Procedimento"})); d.append(h("div", {text: r.proc, style: "white-space:pre-wrap"})); card.append(d); }
+    card.append(h("div", {class: "row"},
+      h("button", {type: "button", text: "Modifica", onclick: () => { ed = JSON.parse(JSON.stringify(r)); delArm = null; renderRic(); window.scrollTo(0, 0); }}),
+      h("button", {type: "button", text: "In menu", "aria-pressed": String(!!r.menu), onclick: () => { r.menu = !r.menu; save(RK, ric); renderRic(); }}),
+      h("button", {type: "button", text: delArm === r.id ? "Conferma: elimina" : "Elimina", onclick: () => { if (delArm === r.id){ ric = ric.filter(z => z.id !== r.id); save(RK, ric); delArm = null; } else delArm = r.id; renderRic(); }})));
+    list.append(card);
+  });
+}
+function renderPrezziStep(){
+  const f = $("ric_form"); f.textContent = "";
+  const need = ed.ingr.filter(g => g.prodotto.trim() && !priceFor(g));
+  if (!need.length){ delete ed._step; renderEd(); return; }
+  f.append(h("h2", {text: "Prezzi degli ingredienti", style: "margin-top:0"}),
+    h("p", {class: "meta", text: "Per " + need.length + (need.length === 1 ? " ingrediente" : " ingredienti") + " di «" + (ed.nome || "questa ricetta") + "» non c’è un prezzo in magazzino. Scrivilo (senza IVA) per avere il costo per porzione. Quello che lasci vuoto lo potrai inserire dopo."}));
+  need.forEach(g => {
+    const b = UF[g.um].b, bn = b === "kg" ? "al kg" : b === "l" ? "al litro" : "al pezzo", mk = pk(g.prodotto) || key(g.prodotto);
+    f.append(h("div", {class: "tk"}, h("b", {text: g.prodotto}), h("small", {text: g.q != null ? "Nella ricetta: " + qf(g.q) + " " + g.um : "Quantità da indicare"}),
+      lab("Prezzo " + bn + ", senza IVA (€)", numIn(null, v => { if (v == null || isNaN(v)) delete mprez[mk]; else mprez[mk] = {p: v, b}; save(MPK, mprez); }, "€"))));
+  });
+  f.append(h("button", {type: "button", class: "p", text: "Continua", onclick: () => { delete ed._step; renderEd(); window.scrollTo(0, 0); }}));
+}
+const fmtMin = m => m <= 0 ? "0 min" : (m >= 60 ? Math.floor(m / 60) + " h" + (m % 60 ? " " : "") : "") + (m % 60 ? (m % 60) + " min" : "");
+const quando = g => g === 0 ? "Il giorno del servizio" : g === 1 ? "1 giorno prima" : g + " giorni prima";
+function fasiSum(r){ const fs = (r.fasi || []).filter(x => x.min > 0); if (!fs.length) return ""; const mx = Math.max(...fs.map(x => x.g)); return (mx === 0 ? "si prepara il giorno stesso" : "si parte " + quando(mx).toLowerCase()) + " · lavoro totale " + fmtMin(fs.reduce((a, x) => a + x.min, 0)); }
+function renderEd(){
+  if (ed._step === "prezzi"){ renderPrezziStep(); return; }
+  ed.fasi = ed.fasi || [];
+  const f = $("ric_form"); f.textContent = "";
+  const tot = h("p", {class: "s", style: "font-weight:700"}), pes = h("p", {class: "s"}), err = h("p", {class: "s bad"});
+  const upd = () => { let gr = 0, ml = 0, pz = 0, np = Math.max(1, ed.porz || 1); ed.ingr.forEach(x => { if (x.q == null) return; const b = UF[x.um].b, v = x.q * UF[x.um].f; if (b === "kg") gr += v * 1000; else if (b === "l") ml += v * 1000; else pz += v; }); const pr = [gr && qf(Math.round(gr)) + " g", ml && qf(Math.round(ml)) + " ml", pz && qf(pz) + " pz"].filter(Boolean), pp = [gr && qf(Math.round(gr / np)) + " g", ml && qf(Math.round(ml / np)) + " ml", pz && qf(Math.round(pz / np * 10) / 10) + " pz"].filter(Boolean); pes.textContent = pr.length ? "Totale ricetta: " + pr.join(" + ") + " · a porzione: " + pp.join(" + ") : ""; const c = costRic(ed), n = ed.prezzo > 0 ? netto(ed.prezzo) : null; tot.textContent = "Costo totale " + (c.miss ? "almeno " : "") + eur(c.tot) + " · costo porzione " + (c.miss ? "almeno " : "") + eur(c.porz) + (n ? " · food cost " + (c.miss ? "almeno " : "") + nf(c.porz / n * 100, 1) + "%" : "") + (c.miss ? " (" + c.miss + (c.miss === 1 ? " ingrediente senza costo)" : " ingredienti senza costo)") : ""); };
+  const cat = h("select", {value: ed.cat || "Altro", onchange: ev => { ed.cat = ev.target.value; }}, CATS.map(c => h("option", {value: c, text: c})));
+  f.append(h("h2", {text: ed.id ? "Modifica ricetta" : ed._imp ? "Ricetta importata" : "Nuova ricetta", style: "margin-top:0"}),
+    ed._imp ? h("p", {class: "s bad", text: (ed._gen ? "Proposta scritta da Claude a partire dal nome, non copiata da un sito: controlla dosi e procedimento prima di usarla per il food cost. " : "") + "Controlla ingredienti e quantità: la lettura può sbagliare." + (ed._pzOk ? "" : " Le porzioni non erano indicate: scrivi quante ne dà.") + " Scegli categoria e prezzo in menù."}) : null,
+    lab("Nome del piatto", h("input", {type: "text", autocomplete: "off", value: ed.nome, oninput: ev => { ed.nome = ev.target.value; }})),
+    lab("Categoria", cat),
+    h("div", {class: "row"}, lab("Porzioni della ricetta", numIn(ed.porz, v => { ed.porz = v; upd(); })), lab("Prezzo in menù (IVA inclusa, €)", numIn(ed.prezzo, v => { ed.prezzo = v; upd(); }))),
+    h("label", {class: "chk"}, h("input", {type: "checkbox", checked: ed.menu ? "checked" : null, onchange: ev => { ed.menu = ev.target.checked; }}), " Piatto del menu attuale"),
+    h("h3", {text: "Ingredienti", style: "margin:10px 0"}));
+  ed.ingr.forEach((g, i) => {
+    const cs = h("small"), nt = h("small", {style: "color:var(--warn);display:block"});
+    const pinp = h("input", {type: "number", step: "any", inputmode: "decimal", placeholder: "€"});
+    const plab = h("label", {class: "f", style: "margin:8px 0 0"}, h("span"), pinp);
+    const mk = () => pk(g.prodotto) || key(g.prodotto);
+    pinp.oninput = () => { const v = pinp.value === "" ? null : parseFloat(pinp.value); if (v == null || isNaN(v) || !g.prodotto.trim()){ delete mprez[mk()]; } else mprez[mk()] = {p: v, b: UF[g.um].b}; save(MPK, mprez); u(true); };
+    const u = (typing) => {
+      nt.textContent = g.nota && g.q == null ? "Nel testo: «" + g.nota + "». Scrivi i grammi o i millilitri." : "";
+      const x = costIngr(g), pr = g.prodotto.trim() ? priceFor(g) : null, b = UF[g.um].b, bn = b === "kg" ? "al kg" : b === "l" ? "al litro" : "al pezzo";
+      const fromMag = pr && pr.src === "magazzino";
+      plab.hidden = !g.prodotto.trim() || fromMag;
+      plab.firstChild.textContent = pr && pr.b !== b ? "Prezzo per " + pr.b + " (€)" : "Prezzo " + bn + ", senza IVA (€)";
+      if (!typing && document.activeElement !== pinp) pinp.value = pr && pr.src === "inserito" ? pr.p : "";
+      cs.textContent = (pr ? "Prezzo " + (fromMag ? "dal magazzino" : "inserito da te") + ": " + ppu(pr.p, pr.b) + " · " : g.prodotto.trim() && g.q != null ? "Prezzo mancante: scrivilo qui sotto. " : "") + (x.err ? (x.err === "incompleto" || x.err === "prezzo mancante" ? "" : "Senza costo: " + x.err) : "Costo: " + eur(x.c));
+      upd();
+    };
+    f.append(h("div", {class: "tk"},
+      lab("Prodotto", h("input", {type: "text", list: "mgProdList", autocomplete: "off", value: g.prodotto, oninput: ev => { g.prodotto = ev.target.value; u(); }})),
+      h("div", {class: "row"}, lab("Quantità", numIn(g.q, v => { g.q = v; u(true); })), lab("Unità", umSel(UM, g.um, v => { g.um = v; u(); }))),
+      nt, cs, plab, h("button", {type: "button", class: "mgx", text: "Togli ingrediente", onclick: () => { ed.ingr.splice(i, 1); renderEd(); }})));
+    u();
+  });
+  f.append(h("button", {type: "button", text: "Aggiungi ingrediente", style: "width:100%;margin-bottom:10px", onclick: () => { ed.ingr.push({prodotto: "", q: null, um: "g"}); renderEd(); }}), pes, tot,
+    h("label", {class: "f"}, "Procedimento", h("textarea", {rows: "6", value: ed.proc || "", oninput: ev => { ed.proc = ev.target.value; }})));
+  const fsum = h("p", {class: "s", style: "font-weight:700"}), updF = () => { fsum.textContent = fasiSum(ed) ? "Tempi: " + fasiSum(ed) : ""; };
+  f.append(h("h3", {text: "Tempi di preparazione", style: "margin:14px 0 4px"}), h("p", {class: "meta", text: "Per ogni giorno di lavoro indica quanto tempo serve. Esempio parmigiana: 2 giorni prima 90 min (friggere le melanzane), 1 giorno prima 60 min (comporre), giorno del servizio 20 min (cuocere)."}));
+  ed.fasi.forEach((x, i) => f.append(h("div", {class: "tk"},
+    lab("Quando", umSelV(x.g, v => { x.g = v; updF(); })),
+    h("div", {class: "row"}, lab("Tempo di lavoro (minuti)", numIn(x.min, v => { x.min = v; updF(); })), lab("Cosa si fa", h("input", {type: "text", autocomplete: "off", value: x.nota || "", oninput: ev => { x.nota = ev.target.value; }}))),
+    lab("Si può fare anche prima? (utile se un giorno è troppo pieno)", h("select", {value: String(x.ant || 0), onchange: ev => { x.ant = parseInt(ev.target.value, 10); }}, [["0", "No, solo nel giorno indicato"], ["1", "Sì, fino a 1 giorno prima"], ["2", "Sì, fino a 2 giorni prima"], ["3", "Sì, fino a 3 giorni prima"]].map(([v, t]) => h("option", {value: v, text: t})))),
+    h("button", {type: "button", class: "mgx", text: "Togli fase", onclick: () => { ed.fasi.splice(i, 1); renderEd(); }}))));
+  f.append(h("button", {type: "button", text: "Aggiungi fase", style: "width:100%;margin-bottom:10px", onclick: () => { ed.fasi.push({g: ed.fasi.length ? Math.max(0, Math.min(...ed.fasi.map(z => z.g)) - 1) : 0, min: null, nota: ""}); renderEd(); }}), fsum, err);
+  updF();
+  f.append(h("button", {type: "button", class: "p", text: "Salva ricetta", onclick: () => {
+    if (!ed.nome.trim()){ err.textContent = "Scrivi il nome del piatto."; return; }
+    if (!(ed.porz >= 1)){ err.textContent = "Indica quante porzioni dà la ricetta."; return; }
+    ed.ingr = ed.ingr.filter(g => g.prodotto.trim() || g.q != null);
+    if (!ed.ingr.length){ err.textContent = "Aggiungi almeno un ingrediente."; return; }
+    ed.nome = ed.nome.trim(); delete ed._imp; delete ed._pzOk; delete ed._gen; delete ed._step; ed.fasi = (ed.fasi || []).filter(x => x.min > 0 || (x.nota || "").trim());
+    if (ed.id) ric = ric.map(z => z.id === ed.id ? ed : z); else { ed.id = Date.now().toString(36); ric.push(ed); }
+    save(RK, ric); ed = null; renderRic();
+  }}), h("button", {type: "button", text: "Annulla", style: "width:100%;margin-top:10px", onclick: () => { ed = null; renderRic(); }}));
+  upd();
+}
+
+// Menu
+["p", "c"].forEach(t => { $("mnB_" + t).onclick = () => { mnSub = t; renderMenu(); }; });
+function renderMenu(){
+  ["p", "c"].forEach(t => { $("mn_" + t).hidden = t !== mnSub; $("mnB_" + t).setAttribute("aria-pressed", t === mnSub); });
+  if (mnSub === "p") renderMenuP(); else renderMenuC();
+}
+// Pianificazione preparazioni
+const PRK = "haccp-prep-v1";
+let prep = Object.assign({cap: 120, off: [0, 2], ovr: {}, done: {}, extra: []}, load(PRK, {}));
+let prSub = "o";
+const DN = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"], DF = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
+const dAdd = (s, n) => { const d = new Date(s + "T12:00:00"); d.setDate(d.getDate() + n); return ymd(d); };
+const dow = s => new Date(s + "T12:00:00").getDay();
+const isWork = s => !prep.off.includes(dow(s));
+const dlab = s => DF[dow(s)].replace(/^./, c => c.toUpperCase()) + " " + dmy(s).slice(0, 5);
+const taskKey = t => t.rid + "|" + t.sd + "|" + t.g + "|" + t.nota;
+function planPrep(){
+  const today = ymd(Date.now());
+  let groups = [];
+  ric.filter(r => r.menu).forEach(r => (r.serve || []).filter(sd => sd >= today).forEach(sd => {
+    const ts = (r.fasi || []).filter(x => x.min > 0).sort((a, b) => b.g - a.g).map(x => ({rid: r.id, dish: r.nome, nota: x.nota || "", min: x.min, g: x.g, nom: dAdd(sd, -x.g), ant: x.ant || 0, sd, day: null, flag: ""}));
+    ts.forEach(t => { t.key = taskKey(t); });
+    if (ts.length) groups.push(ts);
+  }));
+  groups = groups.map(g => g.filter(t => !(prep.done[t.key] && t.nom < today))).filter(g => g.length);
+  const extras = (prep.extra || []).filter(e => !(prep.done["x|" + e.id] && e.day < today)).map(e => ({rid: "x", dish: e.nome, nota: "", min: e.min, g: 0, nom: e.day, ant: 0, sd: e.day, day: null, flag: "", key: "x|" + e.id, extra: true, id: e.id}));
+  const all = groups.flat().concat(extras);
+  if (!all.length) return {days: [], cap: prep.cap, none: true};
+  const prevWork = d => { let x = dAdd(d, -1); for (let i = 0; i < 14; i++){ if (isWork(x)) return x; x = dAdd(x, -1); } return null; };
+  all.forEach(t => {
+    let d = t.nom;
+    if (prep.ovr[t.key]){ d = prep.ovr[t.key]; t.manual = true; if (d < today){ d = today; t.flag = "late"; } t.day = d; return; }
+    if (d < today){ t.flag = "late"; d = today; }
+    if (!t.extra && !isWork(d)){ let p = d, n = 0; while (!isWork(p) && n < 14){ p = dAdd(p, -1); n++; } if (p >= today && n <= t.ant) d = p; else t.flag = t.flag || "off"; }
+    t.day = d;
+  });
+  const load_ = {}; const calc = () => { for (const k in load_) delete load_[k]; all.forEach(t => { load_[t.day] = (load_[t.day] || 0) + t.min; }); }; calc();
+  for (let it = 0; it < 60; it++){
+    let changed = false;
+    Object.keys(load_).sort().forEach(d => {
+      if (load_[d] <= prep.cap) return;
+      const cand = all.filter(t => t.day === d && t.ant > 0 && !t.manual && t.flag !== "late").sort((a, b) => b.min - a.min);
+      for (const t of cand){
+        const p = prevWork(d); if (!p || p < today || p < dAdd(t.nom, -t.ant)) continue;
+        const grp = groups.find(g => g.includes(t)), i = grp.indexOf(t);
+        if (grp.slice(0, i).some(q => q.day > p)) continue;
+        if ((load_[p] || 0) + t.min > prep.cap) continue;
+        t.day = p; calc(); changed = true; break;
+      }
+    });
+    if (!changed) break;
+  }
+  const byDay = {}; all.forEach(t => (byDay[t.day] = byDay[t.day] || []).push(t));
+  return {days: Object.keys(byDay).sort().map(d => ({d, tasks: byDay[d], tot: byDay[d].reduce((a, t) => a + t.min, 0)})), cap: prep.cap};
+}
+function prepToday(){ const d = planPrep().days.find(x => x.d === ymd(Date.now())); const ts = d ? d.tasks.filter(t => !prep.done[t.key]) : []; return {n: ts.length, min: ts.reduce((a, t) => a + t.min, 0)}; }
+["o", "p", "s"].forEach(t => { $("prB_" + t).onclick = () => { prSub = t; renderPrep(); }; });
+function renderPrep(){
+  ["o", "p", "s"].forEach(t => { $("pr_" + t).hidden = t !== prSub; $("prB_" + t).setAttribute("aria-pressed", t === prSub); });
+  if (prSub === "o") renderPrepOggi(); else if (prSub === "p") renderPrepPiano(); else renderPrepSet();
+}
+function taskCard(t, after){
+  const done = !!prep.done[t.key];
+  const note = [t.manual ? "spostata da te" : t.day !== t.nom && !t.extra ? "anticipata, era prevista il " + dmy(t.nom).slice(0, 5) : "", t.extra ? "preparazione aggiunta da te" : "per il servizio del " + dmy(t.sd).slice(0, 5), t.flag === "late" ? "doveva essere fatta il " + dmy(t.nom).slice(0, 5) : "", t.flag === "off" ? "cade in un giorno di riposo" : ""].filter(Boolean).join(" · ");
+  const mv = h("div", {style: "margin-top:8px"});
+  mv.hidden = true; let nd = "";
+  const msg = h("small", {style: "color:var(--warn);display:block"});
+  mv.append(lab("Sposta al giorno", h("input", {type: "date", min: ymd(Date.now()), oninput: ev => { nd = ev.target.value; }})), msg,
+    h("div", {class: "row"}, h("button", {type: "button", text: "Conferma", onclick: () => { if (!nd || nd < ymd(Date.now())){ msg.textContent = "Scegli un giorno da oggi in poi."; return; } if (dow(nd) === 2){ msg.textContent = "Il martedì il ristorante è chiuso."; return; } if (!isWork(nd)) { msg.textContent = "In quel giorno non hai tempo per le preparazioni: scegline un altro."; return; } if (t.extra){ const e = prep.extra.find(z => z.id === t.id); if (e) e.day = nd; } else prep.ovr[t.key] = nd; save(PRK, prep); after(); }}),
+      t.manual ? h("button", {type: "button", text: "Torna automatica", onclick: () => { delete prep.ovr[t.key]; save(PRK, prep); after(); }}) : null));
+  const row = h("div", {style: "padding:8px 0;border-top:1px solid var(--line)"},
+    h("b", {text: t.dish + " · " + fmtMin(t.min), style: "font-size:16px;display:block" + (done ? ";text-decoration:line-through;opacity:.6" : "")}),
+    h("small", {text: (t.nota ? t.nota + " — " : "") + note, style: t.flag ? "color:var(--warn)" : ""}),
+    h("div", {class: "row", style: "margin-top:8px"},
+      h("button", {type: "button", "aria-pressed": String(done), text: done ? "Fatto ✓" : "Segna fatto", onclick: () => { if (done) delete prep.done[t.key]; else prep.done[t.key] = true; save(PRK, prep); after(); }}),
+      h("button", {type: "button", text: "Sposta", onclick: () => { mv.hidden = !mv.hidden; }}),
+      t.extra ? h("button", {type: "button", text: "Elimina", onclick: () => { prep.extra = prep.extra.filter(z => z.id !== t.id); delete prep.done[t.key]; save(PRK, prep); after(); }}) : null), mv);
+  return row;
+}
+function dayCard(d, tasks, tot, after, label){
+  const over = tot > prep.cap;
+  const card = h("div", {class: "tk", style: over ? "border:2px solid var(--warn)" : ""}, h("b", {text: label}),
+    h("p", {class: "s " + (over ? "bad" : "ok"), text: fmtMin(tot) + " su " + fmtMin(prep.cap) + (over ? " · troppo lavoro: mancano " + fmtMin(tot - prep.cap) : "")}),
+    h("div", {style: "height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin-bottom:4px"}, h("div", {style: "height:100%;width:" + Math.min(100, tot / prep.cap * 100) + "%;background:" + (over ? "var(--warn)" : "var(--ok)")})));
+  tasks.forEach(t => card.append(taskCard(t, after)));
+  return card;
+}
+function extraForm(day, after){
+  let nome = "", min = null, dd_ = day;
+  const err = h("small", {style: "color:var(--warn);display:block"});
+  return h("div", {class: "tk"}, h("b", {text: "Aggiungi una preparazione"}), h("small", {text: "Per qualcosa che non è in una ricetta, per esempio un fondo o una base."}),
+    lab("Cosa", h("input", {type: "text", autocomplete: "off", oninput: ev => { nome = ev.target.value; }})),
+    h("div", {class: "row"}, lab("Minuti", numIn(null, v => { min = v; })), lab("Giorno", h("input", {type: "date", min: ymd(Date.now()), value: day, oninput: ev => { dd_ = ev.target.value; }}))), err,
+    h("button", {type: "button", class: "p", text: "Aggiungi", onclick: () => { if (!nome.trim() || !(min > 0) || !dd_ || dd_ < ymd(Date.now())){ err.textContent = "Scrivi cosa, i minuti e un giorno da oggi in poi."; return; } if (dow(dd_) === 2){ err.textContent = "Il martedì il ristorante è chiuso."; return; } prep.extra.push({id: Date.now().toString(36), nome: nome.trim(), min, day: dd_}); save(PRK, prep); after(); }}));
+}
+function renderPrepOggi(){
+  const box = $("pr_o"); box.textContent = ""; const today = ymd(Date.now());
+  if (isClosed(today)) box.append(h("p", {class: "meta", text: "Oggi il ristorante è chiuso."}));
+  const pl = planPrep(), d = pl.days.find(x => x.d === today);
+  if (d) box.append(dayCard(d.d, d.tasks, d.tot, renderPrep, "Oggi · " + dlab(today)));
+  else box.append(h("p", {class: "empty", text: pl.none ? "Nessuna preparazione programmata. Segna i piatti in menu, aggiungi i tempi nelle ricette e le date di servizio in “Date e tempi”." : "Nessuna preparazione in programma oggi."}));
+  box.append(extraForm(today, renderPrep));
+}
+function renderPrepPiano(){
+  const box = $("pr_p"); box.textContent = "";
+  const pl = planPrep();
+  if (pl.none){ box.append(h("p", {class: "empty", text: "Aggiungi almeno una data di servizio a un piatto con tempi di preparazione, nella sezione “Date e tempi”."})); box.append(extraForm(ymd(Date.now()), renderPrep)); return; }
+  let warn = 0;
+  pl.days.forEach(({d, tasks, tot}) => { if (tot > pl.cap) warn++; box.append(dayCard(d, tasks, tot, renderPrep, dlab(d) + (d === ymd(Date.now()) ? " (oggi)" : ""))); });
+  box.append(warn ? h("p", {class: "s bad", text: "Alcuni giorni superano il tempo disponibile. Per sistemarli: segna come “anticipabili” le fasi che si possono fare prima (nella ricetta), sposta una preparazione o una data di servizio, oppure aumenta i minuti."}) : h("p", {class: "s ok", text: "Tutte le preparazioni stanno nel tempo disponibile."}));
+  box.append(extraForm(ymd(Date.now()), renderPrep));
+}
+function renderPrepSet(){
+  const box = $("pr_s"); box.textContent = "";
+  const today = ymd(Date.now());
+  const set = h("div", {class: "tk"}, h("b", {text: "Tempo per le preparazioni"}),
+    lab("Minuti disponibili ogni giorno (4:30–6:30 = 120)", numIn(prep.cap, v => { if (v > 0){ prep.cap = v; save(PRK, prep); } })),
+    h("small", {text: "Giorni con tempo per le preparazioni (di default sono esclusi martedì, chiuso, e domenica). Tocca per cambiare:"}));
+  const seg = h("div", {class: "seg", style: "margin:8px 0 0;flex-wrap:wrap"});
+  [1, 2, 3, 4, 5, 6, 0].forEach(n => seg.append(h("button", {type: "button", text: DN[n], "aria-pressed": String(!prep.off.includes(n)), style: "flex:1 1 12%;padding:0 2px;min-height:44px", onclick: () => { prep.off = prep.off.includes(n) ? prep.off.filter(x => x !== n) : [...prep.off, n]; save(PRK, prep); renderPrepSet(); }})));
+  set.append(seg); box.append(set);
+  const menuR = ric.filter(r => r.menu);
+  if (!menuR.length){ box.append(h("p", {class: "empty", text: "Nessun piatto in menu. Spunta i piatti nella scheda Menu."})); return; }
+  box.append(h("h3", {text: "Quando servi i piatti", style: "margin:14px 0 6px;font-size:20px"}), h("p", {class: "meta", text: "Per ogni piatto aggiungi le date in cui deve essere pronto. L’app calcola quando preparare ogni fase."}));
+  const senza = [];
+  menuR.sort(byNome).forEach(r => {
+    if (!(r.fasi || []).some(x => x.min > 0)){ senza.push(r.nome); return; }
+    const card = h("div", {class: "tk"}, h("b", {text: r.nome}), h("small", {text: fasiSum(r)}));
+    const chips = h("div", {style: "display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"});
+    (r.serve = (r.serve || []).filter(sd => sd >= today).sort()).forEach(sd => chips.append(h("button", {type: "button", class: "mgx", text: dlab(sd) + " ✕", onclick: () => { r.serve = r.serve.filter(x => x !== sd); save(RK, ric); renderPrepSet(); }})));
+    let nd = ""; const dm = h("small", {style: "color:var(--warn);display:block"});
+    const di = h("input", {type: "date", min: today, oninput: ev => { nd = ev.target.value; dm.textContent = nd && dow(nd) === 2 ? "Il martedì il ristorante è chiuso." : nd && dow(nd) === 0 ? "Di domenica non ci sono preparazioni: le fasi vanno fatte nei giorni prima." : ""; }});
+    card.append(chips, h("div", {class: "row", style: "align-items:end"}, lab("Serve il", di), h("button", {type: "button", text: "Aggiungi data", style: "margin-bottom:14px", onclick: () => { if (nd && dow(nd) === 2){ dm.textContent = "Il martedì il ristorante è chiuso: scegli un altro giorno."; return; } if (nd && nd >= today && !r.serve.includes(nd)){ r.serve.push(nd); save(RK, ric); renderPrepSet(); } }})), dm);
+    box.append(card);
+  });
+  if (senza.length) box.append(h("p", {class: "meta", text: "Senza tempi di preparazione (aggiungili nella ricetta): " + senza.join(", ") + "."}));
+}
+window.prepApi = {render: () => { fillProdList(); renderPrep(); }, today: prepToday};
+
+function renderMenuP(){
+  const box = $("mn_p"); box.textContent = "";
+  if (!ric.length){ box.append(h("p", {class: "empty", text: "Non hai ancora ricette. Scrivile nella scheda Ricette, poi torna qui per scegliere quelle del menu."})); return; }
+  box.append(h("p", {class: "meta", text: (n => n + (n === 1 ? " piatto" : " piatti") + " in menu su " + ric.length + (ric.length === 1 ? " ricetta" : " ricette") + ". Spunta i piatti del menu attuale.")(ric.filter(r => r.menu).length)}));
+  CATS.forEach(c => {
+    const rs = ric.filter(r => (r.cat || "Altro") === c).sort(byNome); if (!rs.length) return;
+    const card = h("div", {class: "tk"}, h("b", {text: c}));
+    rs.forEach(r => card.append(h("label", {class: "chk", style: "margin:10px 0 0"}, h("input", {type: "checkbox", checked: r.menu ? "checked" : null, onchange: ev => { r.menu = ev.target.checked; save(RK, ric); renderMenuP(); }}), " " + r.nome)));
+    box.append(card);
+  });
+}
+function renderMenuC(){
+  const box = $("mn_c"); box.textContent = "";
+  const today = ymd(Date.now()), menuR = ric.filter(r => r.menu);
+  if (!menuR.length){ box.append(h("p", {class: "empty", text: "Nessun piatto in menu. Spunta i piatti del menu attuale nella sezione Piatti."})); return; }
+  const used = {}, missing = {};
+  menuR.forEach(r => r.ingr.forEach(g => { if (!g.prodotto.trim()) return; const k = pk(g.prodotto); if (k) (used[k] = used[k] || new Set()).add(r.nome); else { const m = missing[key(g.prodotto)] = missing[key(g.prodotto)] || {nome: g.prodotto.trim(), piatti: new Set()}; m.piatti.add(r.nome); } }));
+  const ks = Object.keys(used), daC = ks.filter(k => chk[k] !== today).length, daO = ks.filter(k => prods[k].ord).length;
+  box.append(h("p", {class: "meta", text: ks.length + (ks.length === 1 ? " prodotto usato" : " prodotti usati") + " dai " + menuR.length + (menuR.length === 1 ? " piatto" : " piatti") + " del menu · " + daC + " da controllare oggi · " + daO + " da ordinare."}));
+  box.append(h("button", {type: "button", text: "Azzera i controlli di oggi", style: "width:100%;margin-bottom:12px", onclick: () => { ks.forEach(k => { if (chk[k] === today) delete chk[k]; }); save(CK, chk); renderMenuC(); }}));
+  const by = {};
+  ks.forEach(k => { const c = carichi(k)[0], f = (c && c.forn) || "Fornitore non noto"; (by[f] = by[f] || []).push(k); });
+  Object.keys(by).sort().forEach(f => {
+    box.append(h("h3", {text: f, style: "margin:14px 0 8px;font-size:20px"}));
+    by[f].sort((a, b) => prods[a].nome.localeCompare(prods[b].nome, "it")).forEach(k => {
+      const p = prods[k], s = stock(k), lp = lastP(k), low = p.min > 0 && s < p.min, done = chk[k] === today;
+      const card = h("div", {class: "tk"}, h("b", {text: p.nome}),
+        h("p", {class: "s " + (s <= 0 || low ? "bad" : "ok"), text: "Giacenza: " + qf(s) + " " + p.um + (p.min > 0 ? " · minima " + qf(p.min) : "") + (s <= 0 ? " · esaurito" : low ? " · sotto scorta" : "")}),
+        h("small", {text: "Usato in: " + [...used[k]].join(", ")}),
+        h("small", {text: lp ? "Ultimo prezzo: " + eur(lp.p) + " / " + p.um : "Prezzo non registrato"}));
+      card.append(h("div", {class: "row"},
+        h("button", {type: "button", "aria-pressed": String(done), text: done ? "Controllato oggi" : chk[k] ? "Controllato il " + dmy(chk[k]) : "Segna controllato", onclick: () => { if (done) delete chk[k]; else chk[k] = today; save(CK, chk); renderMenuC(); }}),
+        h("button", {type: "button", "aria-pressed": String(!!p.ord), text: p.ord ? "Da ordinare ✓" : "Da ordinare", onclick: () => { p.ord = !p.ord; saveAll(); renderMenuC(); }})));
+      box.append(card);
+    });
+  });
+  const ms = Object.values(missing);
+  if (ms.length){
+    box.append(h("h3", {text: "Non ancora in magazzino", style: "margin:14px 0 8px;font-size:20px"}));
+    ms.sort(byNome).forEach(m => box.append(h("div", {class: "tk"}, h("b", {text: m.nome}), h("small", {text: "Usato in: " + [...m.piatti].join(", ") + ". Nessun acquisto registrato con questo nome: carica una bolla oppure correggi il nome nella ricetta."}))));
+  }
+}
+window.magApi = {render: renderMag, scarico: (nome, q, um, doc) => {
+  const k = pk(nome); if (!k || !prods[k]) return "il prodotto non è nel magazzino";
+  if (UF[um].b !== prods[k].um) return "«" + prods[k].nome + "» è gestito in " + prods[k].um;
+  mov.push({id: Date.now() + "s", t: Date.now(), data: today(), tipo: "scarico", k, nome: prods[k].nome, q: q * UF[um].f, p: null, forn: "", doc}); saveAll(); return "ok";
+}};
+window.fcApi = {render: () => { fillProdList(); renderFc(); }};
+window.ricApi = {render: () => { fillProdList(); renderRic(); }};
+window.menuApi = {render: () => { fillProdList(); renderMenu(); }};
+})();
+
+
+show("t");
+</script>
+</body>
+</html>
