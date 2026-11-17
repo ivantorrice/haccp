@@ -2761,7 +2761,7 @@ const parse = s => new Date(s + "T12:00:00");
 const DN = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
 const MN = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
 const E = (t, p, ...k) => { const e = document.createElement(t); if (p) for (const a in p){ if (a === "text") e.textContent = p[a]; else if (a === "cls") e.className = p[a]; else if (a === "on") for (const ev in p.on) e.addEventListener(ev, p.on[ev]); else e.setAttribute(a, p[a]); } k.forEach(x => { if (x != null) e.append(x); }); return e; };
-let day = ymd(new Date()), sub = "g", editId = null, over = false;
+let day = ymd(new Date()), sub = "g", editId = null, over = false, openC = "";
 const limit = () => { const v = Number(rd(KL, 54)); return v > 0 ? v : 54; };
 const live = () => rd(K, []).filter(b => !b.x);
 const active = d => live().filter(b => b.d === d && b.st !== "ann");
@@ -2775,7 +2775,7 @@ const rubrica = () => rd(KR, []).filter(c => !c.x).sort((a, b) => a.n.localeComp
 function addRub(n, t){
   n = String(n || "").trim(); t = String(t || "").trim(); if (!n) return;
   const id = rubKey(n, t), old = rd(KR, []).find(c => c.id === id);
-  upsert(KR, {id, n, tel: t || (old && old.tel) || ""});
+  upsert(KR, Object.assign({}, old || {}, {id, n, tel: t || (old && old.tel) || ""}));
 }
 function fillDl(){ const dl = $("pn_rub"); dl.textContent = ""; rubrica().forEach(c => dl.append(E("option", {value: c.n, label: c.tel || ""}))); }
 function head(){
@@ -2827,6 +2827,7 @@ function form(pre){
   const reset = () => { over = false; go.textContent = "Salva prenotazione"; warn.textContent = ""; };
   [n, t, p, s, nt].forEach(x => x.addEventListener("input", reset));
   n.addEventListener("change", () => { const c = rubrica().find(x => x.n.toLowerCase() === n.value.trim().toLowerCase()); if (c && !t.value.trim()) t.value = c.tel || ""; });
+  t.addEventListener("focus", () => { try { t.select(); } catch(e){} });
   const lab = (a, x) => E("label", {cls: "f"}, document.createTextNode(a), x);
   f.append(lab("Nome", n), lab("Telefono", t), E("div", {cls: "row"}, E("label", {cls: "f", style: "flex:1"}, document.createTextNode("Persone"), p), E("label", {cls: "f", style: "flex:1"}, document.createTextNode("Orario"), s)), lab("Note", nt), warn, go);
   go.onclick = () => {
@@ -2850,10 +2851,27 @@ function rubView(){
     out.textContent = ""; const s = q.value.trim().toLowerCase(), cs = rubrica().filter(c => !s || c.n.toLowerCase().includes(s) || digits(c.tel).includes(digits(s) || "§"));
     if (!cs.length){ out.append(E("p", {cls: "empty", text: rubrica().length ? "Nessun cliente trovato." : "La rubrica si riempie da sola con le prenotazioni che salvi."})); return; }
     cs.forEach(c => {
-      const n = live().filter(b => rubKey(b.n, b.tel) === c.id || b.n.trim().toLowerCase() === c.n.toLowerCase()).length;
-      const card = E("div", {cls: "tk"}, E("b", {text: c.n}), c.tel ? E("small", {}, E("a", {href: "tel:" + c.tel.replace(/[^\d+]/g, ""), text: c.tel})) : null, E("small", {text: n + (n === 1 ? " prenotazione" : " prenotazioni")}));
+      const hist = live().filter(b => rubKey(b.n, b.tel) === c.id || b.n.trim().toLowerCase() === c.n.toLowerCase()).sort((x, y) => (y.d + y.t).localeCompare(x.d + x.t));
+      const vere = hist.filter(b => b.st !== "ann"), pers = vere.reduce((a, b) => a + (Number(b.p) || 0), 0);
+      const card = E("div", {cls: "tk"});
+      const tt = E("button", {type: "button", style: "width:100%;text-align:left;min-height:48px;font-weight:700;font-size:18px", text: c.n + (c.tel ? " · " + c.tel : "")});
+      tt.onclick = () => { openC = openC === c.id ? "" : c.id; draw(); };
+      card.append(tt, E("small", {text: vere.length + (vere.length === 1 ? " prenotazione" : " prenotazioni") + (pers ? " · " + pers + " persone in totale" : "") + (c.fn ? " · nota fissa" : "")}));
+      if (openC === c.id){
+        if (c.tel) card.append(E("small", {}, E("a", {href: "tel:" + c.tel.replace(/[^\d+]/g, ""), text: "Chiama " + c.tel})));
+        const fn = E("textarea", {rows: "2", placeholder: "Nota fissa sul cliente (allergie, tavolo preferito…)"}); fn.value = c.fn || "";
+        fn.addEventListener("input", () => { const all = rd(KR, []), o = all.find(x => x.id === c.id); if (o){ o.fn = fn.value; upsert(KR, o); } });
+        card.append(E("label", {cls: "f", style: "margin-top:8px"}, document.createTextNode("Nota fissa"), fn));
+        card.append(E("b", {style: "display:block;margin:10px 0 4px", text: "Storico"}));
+        if (!hist.length) card.append(E("small", {text: "Nessuna prenotazione registrata."}));
+        const today = ymd(new Date());
+        hist.forEach(b => { const w = parse(b.d), ann = b.st === "ann";
+          card.append(E("div", {style: "padding:8px 0;border-top:1px solid var(--line);" + (ann ? "opacity:.6" : "")},
+            E("div", {style: "font-weight:600;" + (ann ? "text-decoration:line-through" : ""), text: DN[w.getDay()].slice(0, 3) + " " + w.getDate() + " " + MN[w.getMonth()] + " " + w.getFullYear() + " · " + b.p + (Number(b.p) === 1 ? " persona" : " persone") + " · " + b.t}),
+            E("small", {text: (ann ? "annullata" : b.d >= today ? "in programma" : b.st === "arr" ? "venuto" : "") + (b.note ? (ann || b.d >= today || b.st === "arr" ? " · " : "") + b.note : "")}))); });
+      }
       const row = E("div", {cls: "row", style: "margin-top:6px"});
-      const pr = E("button", {type: "button", cls: "p", text: "Prenota", style: "min-height:44px"}); pr.onclick = () => { sub = "g"; editId = null; render(); form({n: c.n, tel: c.tel}); window.scrollTo(0, document.body.scrollHeight); };
+      const pr = E("button", {type: "button", cls: "p", text: "Prenota", style: "min-height:44px"}); pr.onclick = () => { sub = "g"; editId = null; render(); form({n: c.n, tel: c.tel, note: c.fn || ""}); window.scrollTo(0, document.body.scrollHeight); };
       let on = false, tm = null; const del = E("button", {type: "button", text: "Elimina", style: "min-height:44px"});
       del.onclick = () => { if (!on){ on = true; del.textContent = "Tocca ancora"; tm = setTimeout(() => { on = false; del.textContent = "Elimina"; }, 4000); return; } clearTimeout(tm); upsert(KR, {id: c.id, x: 1}); render(); };
       row.append(pr, del); card.append(row); out.append(card);
