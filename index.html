@@ -381,6 +381,16 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <button type="button" class="p" data-k="nc">PDF non conformità</button>
 </div>
 <p id="eSt" role="status"></p>
+<h2 style="margin-top:28px">Backup del mese</h2>
+<p class="sub">Scarica in un solo PDF tutti i registri del mese scelto qui sopra. Conservalo come copia di sicurezza.</p>
+<button type="button" class="p" id="bkBtn" style="width:100%">Backup: tutti i registri in un PDF</button>
+<h2 style="margin-top:28px">Calendario delle chiusure</h2>
+<p class="sub">Nei giorni di chiusura temperature e pulizie sono bloccate e nei PDF compare «Chiuso». Se lavorate in un giorno chiuso, lo sblocchi dalla scheda del giorno.</p>
+<div class="seg" id="clWd" role="group" aria-label="Giorni della settimana chiusi" style="flex-wrap:wrap"></div>
+<label class="f" style="margin-top:14px">Aggiungi un giorno di chiusura (feste, ferie)<input type="date" id="clDate"></label>
+<button type="button" id="clAdd" style="width:100%;margin-bottom:10px">Aggiungi giorno di chiusura</button>
+<p id="clSt" role="status" class="meta"></p>
+<div id="clList"></div>
 </div>
 </main>
 
@@ -533,8 +543,9 @@ const AKEY = "haccp-abb-v1";
 let abb = load(AKEY, []), tipo = "Positivo";
 const ymd = t => { const d = new Date(t); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
 const dmy = s => s.split("-").reverse().join("/");
-const CLOSED = load("haccp-closed-v1", [2]);
-const isClosed = s => CLOSED.includes(new Date(s + "T12:00:00").getDay());
+const CLOSED = load("haccp-closed-v1", [2]), XCL = load("haccp-closedx-v1", []), OPN = load("haccp-openx-v1", []);
+const isClosed = s => !OPN.includes(s) && (CLOSED.includes(new Date(s + "T12:00:00").getDay()) || XCL.includes(s));
+function unlockDay(s){ if (!OPN.includes(s)){ OPN.push(s); save("haccp-openx-v1", OPN); } }
 const SCK = "haccp-scad-v1", p2 = n => String(n).padStart(2, "0");
 let pendingAbb = null;
 function parseScad(s){
@@ -672,6 +683,13 @@ const last = id => entries.filter(e => e.dev === id && e.v !== null && e.v !== u
 
 function build(){
   const box = $("t_cards"); box.textContent = "";
+  if (isClosed(selDay())){
+    const c = document.createElement("div"); c.className = "card";
+    const p = document.createElement("p"); p.style.cssText = "font-weight:600;margin:0 0 12px"; p.textContent = "Il ristorante è chiuso il " + dmy(selDay()) + ": le temperature non si registrano.";
+    const b = document.createElement("button"); b.type = "button"; b.textContent = "Oggi lavoriamo: sblocca questo giorno"; b.style.cssText = "width:100%;min-height:48px";
+    b.onclick = () => { unlockDay(selDay()); render(); };
+    c.append(p, b); box.append(c); return;
+  }
   DEV.forEach(d => {
     const day = selDay(), l = last(d.id), lDay = entries.filter(e => e.dev === d.id && e.v !== null && e.v !== undefined && dayOf(e) === day).sort((a,b) => b.t - a.t)[0], today = !!lDay;
     const c = document.createElement("div"); c.className = "card"; c.dataset.dev = d.id;
@@ -755,7 +773,7 @@ function render(){
   $("t_empty").hidden = items.length > 0;
 }
 $("t_data").addEventListener("change", render);
-window.tempApi = {add: e => { entries.push(e); save(KEY, entries); render(); }, refresh: render};
+window.tempApi = {add: e => { if (isClosed(e.data || ymd(e.t))) return; entries.push(e); save(KEY, entries); render(); }, refresh: render};
 render();
 
 })();
@@ -777,7 +795,7 @@ const diffD = (a, b) => Math.round((dd(b) - dd(a)) / 864e5);
 function setRep(r){ rep = r; $("rSala").setAttribute("aria-pressed", r === "sala"); $("rCuc").setAttribute("aria-pressed", r === "cucina"); renderPul(); }
 $("rSala").onclick = () => setRep("sala"); $("rCuc").onclick = () => setRep("cucina");
 $("pData").onchange = () => renderPul();
-$("pAll").onclick = () => { const sel = $("pData").value || ymd(Date.now()); ["sala", "cucina"].forEach(r2 => { if (!pul.some(e => e.rep === r2 && e.task === "g" && e.data === sel)) pul.push({t: Date.now(), rep: r2, task: "g", data: sel, firma: load(OPKEY, "") || "Ivan Torrice"}); }); save(PKEY, pul); renderPul(); };
+$("pAll").onclick = () => { const sel = $("pData").value || ymd(Date.now()); if (isClosed(sel)) return; ["sala", "cucina"].forEach(r2 => { if (!pul.some(e => e.rep === r2 && e.task === "g" && e.data === sel)) pul.push({t: Date.now(), rep: r2, task: "g", data: sel, firma: load(OPKEY, "") || "Ivan Torrice"}); }); save(PKEY, pul); renderPul(); };
 function renderPul(){
   if (!$("pData").value) $("pData").value = ymd(Date.now());
   const sel = $("pData").value, box = $("pTasks"); box.textContent = "";
@@ -792,7 +810,15 @@ function renderPul(){
         else if (left2 <= lim2) due.push(R + ": " + tk.n + (left2 === 0 ? " (scade oggi)" : " (scade tra " + left2 + (left2 === 1 ? " giorno)" : " giorni)"))); }
     }
   });
-  $("pDue").textContent = due.length ? "Da fare: " + due.join(" · ") : ""; $("pDue").hidden = !due.length;
+  $("pDue").textContent = due.length ? "Da fare: " + due.join(" · ") : ""; $("pDue").hidden = !due.length || isClosed(sel);
+  $("pAll").hidden = isClosed(sel);
+  if (isClosed(sel)){
+    const div = document.createElement("div"); div.className = "tk";
+    const p = document.createElement("p"); p.style.cssText = "font-weight:600;margin:0 0 12px"; p.textContent = "Il ristorante è chiuso il " + dmy(sel) + ": le pulizie non si registrano.";
+    const b = document.createElement("button"); b.type = "button"; b.textContent = "Oggi lavoriamo: sblocca questo giorno"; b.style.cssText = "width:100%;min-height:48px";
+    b.onclick = () => { unlockDay(sel); renderPul(); };
+    div.append(p, b); box.append(div); return;
+  }
   TASKS[rep].forEach(tk => {
     const mine = pul.filter(e => e.rep === rep && e.task === tk.k).sort((a, b) => b.t - a.t);
     let ok, txt, early = false;
@@ -848,7 +874,7 @@ function pulRows(r, ym){
     const day = ym + "-" + String(d).padStart(2, "0"), es = all.filter(e => e.data === day).sort(byT);
     const has = k => es.some(e => e.task === k && !e.nr) ? "X" : "";
     let sig = es.map(e => e.nr ? "NON ESEGUITA (" + e.firma + ")" : e.firma + " " + (e.data !== ymd(e.t) ? "inserito in ritardo il " + dmy(ymd(e.t)) + " " + hmE(e.t) : hmE(e.t))).join("; ");
-    if (!es.some(e => e.task === "g") && day >= first && day < today) sig = (sig ? sig + "; " : "") + (isClosed(day) ? "Chiuso" : "Giornaliero non registrato");
+    if (!es.some(e => e.task === "g")){ if (isClosed(day)) sig = (sig ? sig + "; " : "") + "Chiuso"; else if (day >= first && day < today) sig = (sig ? sig + "; " : "") + "Giornaliero non registrato"; }
     rows.push(r === "cucina" ? [d, has("g"), has("s"), has("m"), sig] : [d, has("g"), has("m"), sig]);
   }
   return rows;
@@ -877,6 +903,8 @@ function renderOggi(){
   }
   const sc = scadList().filter(x => x.left != null && x.left <= 2);
   if (sc.length){ const sc0 = sc.filter(x => x.left < 0).length; items.push({t: sc.length + (sc.length === 1 ? " prodotto scaduto o in scadenza" : " prodotti scaduti o in scadenza"), s: sc.slice(0, 3).map(x => (x.e.prodotto || "?") + " (" + (x.left < 0 ? "scaduto" : x.left === 0 ? "oggi" : x.left === 1 ? "domani" : "tra 2 giorni") + ")").join(", ") + (sc.length > 3 ? "…" : ""), late: sc0 > 0, go: () => show("m"), tg: () => $("scBox")}); }
+  { const dn = new Date(); if (dn.getDate() <= 10){ const pd = new Date(dn.getFullYear(), dn.getMonth() - 1, 1), pym = pd.getFullYear() + "-" + String(pd.getMonth() + 1).padStart(2, "0");
+      if (load("haccp-bkp-v1", "") !== pym) items.push({t: "Backup di " + pd.toLocaleDateString("it-IT", {month: "long", year: "numeric"}), s: "Scarica tutti i registri del mese in un solo PDF", go: () => { show("e"); $("eMese").value = pym; }, tg: () => $("bkBtn")}); } }
   const nc = nE.filter(e => !e.chiusura).length;
   if (nc) items.push({t: nc + (nc === 1 ? " non conformità aperta" : " non conformità aperte"), s: "Completa la risoluzione e chiudi", go: () => show("n"), tg: () => [...document.querySelectorAll("#vNc li")].find(li => li.querySelector("button"))});
   if (window.prepApi && !closed){ const pt = prepApi.today(); if (pt.n) items.push({t: "Preparazioni di oggi: " + pt.n + (pt.n === 1 ? " fase" : " fasi"), s: pt.min + " minuti di lavoro", go: () => show("q")}); }
@@ -984,12 +1012,10 @@ function prepExp(){
 }
 function eMsg(m, err){ $("eSt").textContent = m; $("eSt").className = err ? "err" : ""; }
 
-async function makePdf(k){
-  const r = REG[k]; let ym = $("eMese").value; if (r.pul && ym === "tutto") ym = ymd(Date.now()).slice(0, 7);
-  if (!window.jspdf){ eMsg("Non riesco a caricare il generatore di PDF. Controlla la connessione e riprova.", true); return; }
-  const rows = r.rows(ym);
-  const mo = [...$("eMese").options].find(x => x.value === ym), lab = mo ? mo.textContent : "tutti i dati";
-  const doc = new window.jspdf.jsPDF({orientation:"landscape", unit:"mm", format:"a4"});
+function drawReg(doc, k, ym, lab, newPage){
+  const r = REG[k], y2 = (r.pul && ym === "tutto") ? ymd(Date.now()).slice(0, 7) : ym;
+  const rows = r.rows(y2);
+  if (newPage) doc.addPage();
   doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.text(RIST, 14, 16);
   doc.setFontSize(12); doc.text(r.titolo, 14, 23);
   doc.setFont("helvetica", "normal"); doc.setFontSize(10);
@@ -1001,17 +1027,70 @@ async function makePdf(k){
     didParseCell: d => { if (d.section === "body" && (d.cell.raw === "FUORI LIMITE" || d.cell.raw === "NON RILEVATA" || d.cell.raw === "NC" || d.cell.raw === "No")){ d.cell.styles.textColor = [180, 84, 10]; d.cell.styles.fontStyle = "bold"; } }
   });
   if (r.pul){ let y = doc.lastAutoTable.finalY + 8; if (y > doc.internal.pageSize.getHeight() - 12){ doc.addPage(); y = 20; } doc.setFontSize(9); doc.text("Prodotti utilizzati: detergente neutro o alcalino, disinfettante a base di cloro/alcol.", 14, y); }
+}
+function pageNumbers(doc){
   const n = doc.getNumberOfPages(), w = doc.internal.pageSize.getWidth(), h = doc.internal.pageSize.getHeight();
   for (let i = 1; i <= n; i++){ doc.setPage(i); doc.setFontSize(8); doc.text("Pagina " + i + " di " + n, w - 14, h - 8, {align: "right"}); }
+}
+async function savePdf(doc, filename, okMsg){
   let dl = null;
   try { dl = await claude.use("downloads"); } catch(e){ dl = null; }
-  if (!dl){ eMsg("Il salvataggio dei file non è disponibile qui. Apri la pagina dal browser.", true); return; }
-  try {
-    await dl.save({filename: r.file + "-" + (ym === "tutto" ? "completo" : ym) + ".pdf", data: doc.output("blob")});
-    eMsg("PDF pronto: " + r.titolo + ", " + lab + ".");
-  } catch(e){ eMsg(e && e.code === "declined" ? "Salvataggio annullato." : "Non sono riuscito a salvare il PDF. Riprova.", e && e.code !== "declined"); }
+  if (!dl){ eMsg("Il salvataggio dei file non è disponibile qui. Apri la pagina dal browser.", true); return false; }
+  try { await dl.save({filename, data: doc.output("blob")}); eMsg(okMsg); return true; }
+  catch(e){ eMsg(e && e.code === "declined" ? "Salvataggio annullato." : "Non sono riuscito a salvare il PDF. Riprova.", e && e.code !== "declined"); return false; }
+}
+async function makePdf(k){
+  const r = REG[k]; let ym = $("eMese").value; if (r.pul && ym === "tutto") ym = ymd(Date.now()).slice(0, 7);
+  if (!window.jspdf){ eMsg("Non riesco a caricare il generatore di PDF. Controlla la connessione e riprova.", true); return; }
+  const mo = [...$("eMese").options].find(x => x.value === ym), lab = mo ? mo.textContent : "tutti i dati";
+  const doc = new window.jspdf.jsPDF({orientation:"landscape", unit:"mm", format:"a4"});
+  drawReg(doc, k, ym, lab, false); pageNumbers(doc);
+  await savePdf(doc, r.file + "-" + (ym === "tutto" ? "completo" : ym) + ".pdf", "PDF pronto: " + r.titolo + ", " + lab + ".");
+}
+const BKK = "haccp-bkp-v1", prevYm = () => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
+const ymLab = ym => { const [y, m] = ym.split("-").map(Number); return MESI[m - 1] + " " + y; };
+async function makeBackup(){
+  let ym = $("eMese").value; if (ym === "tutto") ym = prevYm();
+  if (!window.jspdf){ eMsg("Non riesco a caricare il generatore di PDF. Controlla la connessione e riprova.", true); return; }
+  const lab = ymLab(ym), doc = new window.jspdf.jsPDF({orientation:"landscape", unit:"mm", format:"a4"});
+  ["temp", "merce", "pos", "neg", "pulsala", "pulcucina", "nc"].forEach((k, i) => drawReg(doc, k, ym, lab, i > 0));
+  pageNumbers(doc);
+  const ok = await savePdf(doc, "backup-registri-" + ym + ".pdf", "Backup pronto: tutti i registri di " + lab + " in un solo PDF.");
+  if (ok){ save(BKK, ym); renderOggi(); }
 }
 document.querySelectorAll(".exp button").forEach(b => { b.onclick = () => makePdf(b.dataset.k); });
+$("bkBtn").onclick = () => makeBackup();
+function refreshAll(){ try { window.tempApi.refresh(); } catch(e){} try { renderPul(); } catch(e){} try { renderOggi(); } catch(e){} renderCal(); }
+function renderCal(){
+  const wd = $("clWd"); wd.textContent = "";
+  [["Lun", 1], ["Mar", 2], ["Mer", 3], ["Gio", 4], ["Ven", 5], ["Sab", 6], ["Dom", 0]].forEach(([nm, n]) => {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = nm; b.style.minHeight = "48px"; b.setAttribute("aria-pressed", CLOSED.includes(n));
+    b.onclick = () => { const i = CLOSED.indexOf(n); if (i >= 0) CLOSED.splice(i, 1); else CLOSED.push(n); save("haccp-closed-v1", CLOSED); refreshAll(); };
+    wd.append(b);
+  });
+  const box = $("clList"); box.textContent = "";
+  const mk = (title, arr, lab, fn) => {
+    if (!arr.length) return;
+    const h = document.createElement("p"); h.className = "meta"; h.style.fontWeight = "600"; h.textContent = title; box.append(h);
+    arr.slice().sort().reverse().forEach(d => {
+      const row = document.createElement("div"); row.className = "row"; row.style.cssText = "align-items:center;margin-bottom:6px";
+      const t = document.createElement("span"); t.style.flex = "1"; t.textContent = dmy(d) + " (" + ["dom", "lun", "mar", "mer", "gio", "ven", "sab"][new Date(d + "T12:00:00").getDay()] + ")";
+      const b = document.createElement("button"); b.type = "button"; b.textContent = lab; b.onclick = () => fn(d);
+      row.append(t, b); box.append(row);
+    });
+  };
+  mk("Giorni di chiusura aggiunti", XCL, "Togli", d => { XCL.splice(XCL.indexOf(d), 1); save("haccp-closedx-v1", XCL); refreshAll(); });
+  mk("Giorni chiusi sbloccati (si lavora)", OPN, "Richiudi", d => { OPN.splice(OPN.indexOf(d), 1); save("haccp-openx-v1", OPN); refreshAll(); });
+}
+$("clAdd").onclick = () => {
+  const d = $("clDate").value, st = $("clSt");
+  if (!d){ st.textContent = "Scegli prima la data."; return; }
+  if (XCL.includes(d)){ st.textContent = "Quel giorno è già segnato come chiuso."; return; }
+  XCL.push(d); const i = OPN.indexOf(d); if (i >= 0) OPN.splice(i, 1);
+  save("haccp-closedx-v1", XCL); save("haccp-openx-v1", OPN);
+  st.textContent = "Aggiunto: " + dmy(d) + ". In quel giorno temperature e pulizie sono bloccate."; $("clDate").value = ""; refreshAll();
+};
+renderCal();
 
 // --- Comando vocale
 (function(){
@@ -1155,11 +1234,13 @@ document.querySelectorAll(".exp button").forEach(b => { b.onclick = () => makePd
       }
       if (it.k === "t"){
         const nm = it.id === "z1" ? "Freezer 1" : "Freezer 2", label = nm + ": " + fmtN(it.v) + " °C, " + fase.toLowerCase();
+        if (isClosed(today)) return {label, skip: "oggi il ristorante è chiuso"};
         if (it.v < -50 || it.v > 100) return {label, skip: "valore poco credibile, ripeti"};
         if (it.v > -18) return {label, skip: "fuori limite (serve −18 °C o meno): registrala dalla scheda Temperature con l’azione correttiva"};
         return {label, run: () => window.tempApi.add({t: Date.now(), data: today, late: false, dev: it.id, v: it.v, op: who, out: false, note: "", fase})};
       }
       const label = "Pulizia " + {g: "giornaliera", s: "settimanale", m: "mensile"}[it.task] + ", " + it.rep;
+      if (isClosed(today)) return {label, skip: "oggi il ristorante è chiuso"};
       const mine = pul.filter(e => e.rep === it.rep && e.task === it.task && !e.nr);
       if (it.task === "g"){ if (mine.some(e => e.data === today)) return {label, skip: "già segnata oggi"}; }
       else { const l = mine.sort((a, b) => a.data < b.data ? 1 : -1)[0]; if (l){ const due = it.task === "s" ? addDays(l.data, 7) : addMonths(l.data); if (diffD(today, due) > 0) return {label, skip: "già fatta il " + dmy(l.data) + ", prossima entro " + dmy(due)}; } }
