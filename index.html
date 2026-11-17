@@ -255,10 +255,10 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 #vTemp button[aria-pressed="true"]{background:var(--acc);color:var(--accink);border-color:var(--acc)}
 .mg3{display:grid;grid-template-columns:1.1fr 1fr 1.2fr;gap:8px;margin-bottom:8px}.mg3 label.f{margin:0}
 .tk .s.bad{color:var(--warn);font-weight:600}.tk .row{margin-top:8px;flex-wrap:wrap}.tk .row button{flex:1;min-height:44px;font-size:16px}
-#vMag .mgx,#vFc .mgx{min-height:40px;font-size:15px}
-#vMag table,#vFc table{width:100%;border-collapse:collapse;font-size:14px}#vMag td,#vMag th,#vFc td{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left}
+#vMag .mgx,#vRic .mgx{min-height:40px;font-size:15px}
+#vMag table,#vRic table{width:100%;border-collapse:collapse;font-size:14px}#vMag td,#vMag th,#vRic td{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left}
 #vMag .best{color:var(--ok);font-weight:700}
-#vFc details{margin-top:8px;font-size:14px;color:var(--mute)}#vFc summary{cursor:pointer;color:var(--ink)}
+#vRic details{margin-top:8px;font-size:14px;color:var(--mute)}#vRic summary{cursor:pointer;color:var(--ink)}
 #oggi{margin:0 0 16px;border-radius:14px;padding:12px;border:2px solid var(--warn);background:var(--warnbg)}
 #oggi.ok{border:1px solid var(--line);background:var(--card);padding:10px 14px}
 #oggi h2{margin:0 0 8px;font-size:22px;color:var(--warn)}
@@ -296,7 +296,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <div class="brand"><img id="brandLogo" alt="Vittoria 1926 Osteria Contemporanea" width="90" height="58"></div>
 <div id="oggi" role="region" aria-label="Da fare oggi"></div>
 <div class="seg" id="areaSeg" role="group" aria-label="Area"><button type="button" id="aHaccp" aria-pressed="true" style="min-height:58px;font-size:22px">HACCP</button><button type="button" id="aMag" aria-pressed="false" style="min-height:58px;font-size:22px">Magazzino e costi</button></div>
-<nav class="tabs"><button type="button" id="tTemp" aria-pressed="false">Temperature</button><button type="button" id="tMerce" aria-pressed="false">Merce in arrivo</button><button type="button" id="tAbb" aria-pressed="false">Abbattimento</button><button type="button" id="tPul" aria-pressed="false">Pulizia</button><button type="button" id="tNc" aria-pressed="false">Non conformità</button><button type="button" id="tMis" aria-pressed="false">Mancanti</button><button type="button" id="tMag" aria-pressed="false">Magazzino</button><button type="button" id="tMenu" aria-pressed="false">Menu</button><button type="button" id="tPrep" aria-pressed="false">Preparazioni</button><button type="button" id="tRic" aria-pressed="false">Menu cucina</button><button type="button" id="tFc" aria-pressed="false">Food cost</button><button type="button" id="tCarta" aria-pressed="false">Carta</button><button type="button" id="tExp" aria-pressed="false">PDF</button><button type="button" id="tPiano" aria-pressed="false">Piano HACCP</button></nav>
+<nav class="tabs"><button type="button" id="tTemp" aria-pressed="false">Temperature</button><button type="button" id="tMerce" aria-pressed="false">Merce in arrivo</button><button type="button" id="tAbb" aria-pressed="false">Abbattimento</button><button type="button" id="tPul" aria-pressed="false">Pulizia</button><button type="button" id="tNc" aria-pressed="false">Non conformità</button><button type="button" id="tMis" aria-pressed="false">Mancanti</button><button type="button" id="tMag" aria-pressed="false">Magazzino</button><button type="button" id="tPrep" aria-pressed="false">Preparazioni</button><button type="button" id="tRic" aria-pressed="false">Menu cucina</button><button type="button" id="tCarta" aria-pressed="false">Carta</button><button type="button" id="tExp" aria-pressed="false">PDF</button><button type="button" id="tPiano" aria-pressed="false">Piano HACCP</button></nav>
 <div id="vox">
 <button type="button" class="p" id="voxBtn" style="width:100%;margin-bottom:10px" hidden>Comando vocale: tocca e parla</button>
 <label class="f" style="margin-bottom:8px">Scrivi o detta il comando (microfono della tastiera)<input id="voxIn" type="text" autocomplete="off" placeholder="es. freezer uno meno ventuno"></label>
@@ -445,14 +445,6 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 </div>
 </div>
 
-<div id="vMenu" hidden>
-<h1>Menu</h1>
-<p class="sub">I piatti del menu attuale e i prodotti da controllare per il riordino.</p>
-<div class="seg" role="group" aria-label="Sezioni menu"><button type="button" id="mnB_p" aria-pressed="true">Piatti</button><button type="button" id="mnB_c" aria-pressed="false">Da controllare</button></div>
-<div id="mn_p"></div>
-<div id="mn_c" hidden></div>
-</div>
-
 <div id="vPrep" hidden>
 <h1>Preparazioni</h1>
 <p class="sub">Cosa preparare ogni giorno, in base ai piatti del menu e al tempo che hai (4:30–6:30).</p>
@@ -464,7 +456,11 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 
 <div id="vRic" hidden>
 <h1>Menu cucina</h1>
-<p class="sub">Scrivi ingredienti in grammi e procedimento. Il costo si calcola dall’ultimo prezzo pagato in magazzino.</p>
+<p class="sub">Tutti i piatti della cucina. Spunta «In menu» per quelli del menu attuale: servono per il riordino dei prodotti e per le preparazioni. Il costo e il food cost di ogni piatto si calcolano dall’ultimo prezzo pagato in magazzino.</p>
+<div class="seg" role="group" aria-label="Sezioni menu cucina" style="margin-bottom:12px"><button type="button" id="rcB_r" aria-pressed="true">Piatti</button><button type="button" id="rcB_c" aria-pressed="false">Prodotti da controllare</button></div>
+<div id="mn_c" hidden></div>
+<div id="fc_cfg"><div class="row"><label class="f" style="flex:1">Obiettivo food cost (%)<input type="number" id="fc_target" step="1" inputmode="decimal"></label><label class="f" style="flex:1">IVA sulla vendita (%)<input type="number" id="fc_iva" step="1" inputmode="decimal"></label></div>
+<label class="chk"><input type="checkbox" id="fc_onlym"> Solo i piatti in menu</label></div>
 <div id="ric_top"><button type="button" class="p" id="ric_new" style="width:100%;margin-bottom:10px">Nuova ricetta</button><button type="button" id="ric_dict" style="width:100%;margin-bottom:10px" hidden></button><button type="button" id="ric_imp_btn" style="width:100%;margin-bottom:14px">Importa ricetta (da sito, testo o foto)</button></div>
 <div id="ric_imp" hidden>
 <h2 style="margin-top:0">Importa ricetta</h2>
@@ -505,14 +501,6 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <div id="ctView" hidden></div>
 </div>
 
-<div id="vFc" hidden>
-<h1>Food cost</h1>
-<p class="sub">Costo di ogni piatto e percentuale sul prezzo di vendita. Le ricette si scrivono nella scheda Menu cucina.</p>
-<div class="row"><label class="f" style="flex:1">Obiettivo food cost (%)<input type="number" id="fc_target" step="1" inputmode="decimal"></label><label class="f" style="flex:1">IVA sulla vendita (%)<input type="number" id="fc_iva" step="1" inputmode="decimal"></label></div>
-<label class="chk"><input type="checkbox" id="fc_onlym"> Solo i piatti del menu</label>
-<div id="fc_list"></div>
-</div>
-
 <div id="vPiano" hidden>
 <h1>Piano di autocontrollo</h1>
 <p class="sub">Vittoria 1926 Osteria Contemporanea, Rev. 00 del 06/04/2026 (dott. Lorenzo Reale). Da qui lo apri sempre, anche in cucina.</p>
@@ -543,7 +531,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <label class="f">Codice della cucina (almeno 8 caratteri, non darlo a estranei)<input id="cdCode" type="text" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
 <button type="button" class="p" id="cdGo" style="width:100%">Collega al cloud</button>
 <p id="cdSt" role="status" class="meta"></p>
-<p class="meta" style="margin-top:0">Versione app: 17/11 ore 17:05 (sincronizzazione corretta)</p>
+<p class="meta" style="margin-top:0">Versione app: 17/11 ore 19:30 (ingredienti e allergeni)</p>
 <button type="button" id="cdDg" style="width:100%;margin-bottom:6px">Diagnosi del collegamento</button>
 <pre id="cdDgOut" class="meta" style="white-space:pre-wrap;word-break:break-word;margin:0 0 8px" hidden></pre>
 <button type="button" id="cdNot" style="width:100%;margin-bottom:6px" hidden>Attiva le notifiche delle 18</button>
@@ -730,8 +718,8 @@ function scadList(){
   return load("haccp-trac-v1", []).filter(e => (e.scadenza || "").trim() && !done[e.t]).map(e => { const d = parseScad(e.scadenza); return {e, d, left: d ? Math.round((new Date(d + "T12:00:00") - new Date(today + "T12:00:00")) / 864e5) : null}; }).sort((a, b) => (a.d || "9999") < (b.d || "9999") ? -1 : 1);
 }
 let lastH = "t", lastM = "g";
-const HID = ["tTemp", "tMerce", "tAbb", "tPul", "tNc", "tMis", "tExp", "tPiano"], MID = ["tMag", "tMenu", "tPrep", "tRic", "tFc", "tCarta"];
-const VIEWS = {t:["vTemp","tTemp"], m:["vMerce","tMerce"], a:["vAbb","tAbb"], p:["vPul","tPul"], n:["vNc","tNc"], x:["vMis","tMis"], g:["vMag","tMag"], u:["vMenu","tMenu"], q:["vPrep","tPrep"], r:["vRic","tRic"], f:["vFc","tFc"], k:["vCarta","tCarta"], e:["vExp","tExp"], z:["vPiano","tPiano"]};
+const HID = ["tTemp", "tMerce", "tAbb", "tPul", "tNc", "tMis", "tExp", "tPiano"], MID = ["tMag", "tPrep", "tRic", "tCarta"];
+const VIEWS = {t:["vTemp","tTemp"], m:["vMerce","tMerce"], a:["vAbb","tAbb"], p:["vPul","tPul"], n:["vNc","tNc"], x:["vMis","tMis"], g:["vMag","tMag"], q:["vPrep","tPrep"], r:["vRic","tRic"], k:["vCarta","tCarta"], e:["vExp","tExp"], z:["vPiano","tPiano"]};
 function show(w){
   const inM = "gurqfk".includes(w); if (inM) lastM = w; else lastH = w;
   HID.forEach(i => { $(i).hidden = inM; }); MID.forEach(i => { $(i).hidden = !inM; });
@@ -743,8 +731,6 @@ function show(w){
   if (w === "n") renderNc();
   if (w === "x") renderMis();
   if (w === "g" && window.magApi) magApi.render();
-  if (w === "f" && window.fcApi) fcApi.render();
-  if (w === "u" && window.menuApi) menuApi.render();
   if (window.todayApi) todayApi.render();
   if (w === "r" && window.ricApi) ricApi.render();
   if (w === "q" && window.prepApi) prepApi.render();
@@ -2365,30 +2351,21 @@ const netto = pr => pr / (1 + cfg.iva / 100);
 const umSelV = (v, on) => h("select", {value: String(v), onchange: ev => on(parseInt(ev.target.value, 10))}, [0, 1, 2, 3, 4, 5, 6, 7].map(g => h("option", {value: String(g), text: g === 0 ? "Il giorno del servizio" : g === 1 ? "1 giorno prima" : g + " giorni prima"})));
 const byNome = (a, b) => a.nome.localeCompare(b.nome, "it");
 
-// Food cost (solo lettura)
-$("fc_target").addEventListener("input", () => { const v = parseFloat($("fc_target").value); if (v > 0){ cfg.target = v; save(FK, cfg); renderFc(true); } });
-$("fc_iva").addEventListener("input", () => { const v = parseFloat($("fc_iva").value); if (v >= 0){ cfg.iva = v; save(FK, cfg); renderFc(true); } });
-$("fc_onlym").onchange = () => renderFc(true);
-function renderFc(keep){
-  if (!keep){ $("fc_target").value = cfg.target; $("fc_iva").value = cfg.iva; }
-  const box = $("fc_list"); box.textContent = "";
-  if (!ric.length){ box.append(h("p", {class: "empty", text: "Nessuna ricetta. Scrivile nella scheda Menu cucina: per avere i costi serve anche caricare le bolle nel Magazzino."})); return; }
-  const onlyM = $("fc_onlym").checked;
-  const list = ric.filter(r => !onlyM || r.menu).map(r => { const c = costRic(r), n = r.prezzo > 0 ? netto(r.prezzo) : null; return {r, c, n, fc: n ? c.porz / n * 100 : null}; });
-  const wm = list.filter(x => x.fc != null && x.r.menu);
-  if (wm.length) box.append(h("p", {class: "meta", text: "Food cost medio dei piatti in menu: " + nf(wm.reduce((a, x) => a + x.fc, 0) / wm.length, 1) + "% (" + wm.length + (wm.length === 1 ? " piatto con prezzo" : " piatti con prezzo") + ")."}));
-  list.sort((a, b) => (b.fc == null ? -1 : b.fc) - (a.fc == null ? -1 : a.fc)).forEach(({r, c, n, fc}) => {
-    const card = h("div", {class: "tk"}, h("b", {text: r.nome + (r.menu ? " · in menu" : "")}),
-      h("p", {class: "s" + (c.miss ? " bad" : ""), text: "Costo porzione: " + (c.miss ? "almeno " : "") + eur(c.porz) + " · " + r.porz + (r.porz === 1 ? " porzione" : " porzioni") + " · totale " + eur(c.tot)}));
-    if (c.miss) card.append(h("small", {class: "s bad", text: "Mancano dati per " + c.miss + (c.miss === 1 ? " ingrediente" : " ingredienti") + ": il costo è incompleto."}));
-    if (fc != null){
-      card.append(h("p", {class: "s " + (fc <= cfg.target ? "ok" : "bad"), text: "Vendita " + eur(r.prezzo) + " (netto " + eur(n) + ") → food cost " + (c.miss ? "almeno " : "") + nf(fc, 1) + "% (obiettivo " + nf(cfg.target, 0) + "%)"}));
-      if (c.porz > 0) card.append(h("small", {text: "Per stare al " + nf(cfg.target, 0) + "% venderesti a " + eur(c.porz / (cfg.target / 100) * (1 + cfg.iva / 100)) + " (IVA inclusa)."}));
-    } else card.append(h("small", {text: "Prezzo di vendita non indicato."}));
-    const d = h("details", null, h("summary", {text: "Ingredienti"}));
-    r.ingr.forEach(g => { const x = costIngr(g); d.append(h("div", {text: g.prodotto + " " + (g.q != null ? qf(g.q) + " " + g.um : "") + " — " + (x.err ? x.err : eur(x.c))})); });
-    card.append(d); box.append(card);
-  });
+// Food cost (dentro Menu cucina)
+$("fc_target").addEventListener("input", () => { const v = parseFloat($("fc_target").value); if (v > 0){ cfg.target = v; save(FK, cfg); renderRic(); } });
+$("fc_iva").addEventListener("input", () => { const v = parseFloat($("fc_iva").value); if (v >= 0){ cfg.iva = v; save(FK, cfg); renderRic(); } });
+$("fc_onlym").onchange = () => renderRic();
+function fcBlock(r){
+  const c = costRic(r), n = r.prezzo > 0 ? netto(r.prezzo) : null, fc = n ? c.porz / n * 100 : null, out = [];
+  out.push(h("p", {class: "s" + (c.miss ? " bad" : ""), text: "Costo porzione: " + (c.miss ? "almeno " : "") + eur(c.porz) + " · totale " + eur(c.tot)}));
+  if (c.miss) out.push(h("small", {class: "s bad", text: "Mancano dati per " + c.miss + (c.miss === 1 ? " ingrediente" : " ingredienti") + ": il costo è incompleto (servono le bolle nel Magazzino)."}));
+  if (fc != null){
+    out.push(h("p", {class: "s " + (fc <= cfg.target ? "ok" : "bad"), text: "Vendita " + eur(r.prezzo) + " (netto " + eur(n) + ") → food cost " + (c.miss ? "almeno " : "") + nf(fc, 1) + "% (obiettivo " + nf(cfg.target, 0) + "%)"}));
+    if (c.porz > 0) out.push(h("small", {text: "Per stare al " + nf(cfg.target, 0) + "% venderesti a " + eur(c.porz / (cfg.target / 100) * (1 + cfg.iva / 100)) + " (IVA inclusa)."}));
+  } else out.push(h("small", {text: "Prezzo di vendita non indicato (si scrive nella modifica del piatto)."}));
+  const d = h("details", null, h("summary", {text: "Costo degli ingredienti"}));
+  r.ingr.forEach(g => { const x = costIngr(g); d.append(h("div", {text: g.prodotto + " " + (g.q != null ? qf(g.q) + " " + g.um : "") + " — " + (x.err ? x.err : eur(x.c))})); });
+  out.push(d); return out;
 }
 
 // Ricette (scrittura)
@@ -2446,18 +2423,26 @@ $("ric_dict").onclick = () => {
 $("ric_new").onclick = () => { ed = {id: "", nome: "", cat: "Primo", porz: 1, prezzo: null, menu: false, proc: "", ingr: [{prodotto: "", q: null, um: "g"}]}; renderRic(); window.scrollTo(0, 0); };
 function renderRic(){
   const list = $("ric_list"), form = $("ric_form");
+  $("rcB_r").setAttribute("aria-pressed", rcSub === "r"); $("rcB_c").setAttribute("aria-pressed", rcSub === "c");
+  $("mn_c").hidden = rcSub !== "c";
+  $("rcB_r").parentElement.hidden = !!ed; $("fc_cfg").hidden = !!ed || rcSub !== "r";
+  if (rcSub === "c" && !ed){ $("ric_imp").hidden = true; $("ric_top").hidden = true; list.hidden = true; form.hidden = true; fillProdList(); renderMenuC(); return; }
   dettBtn();
   $("ric_imp").hidden = true; $("ric_top").hidden = !!ed; list.hidden = !!ed; form.hidden = !ed;
   if (ed){ renderEd(); return; }
+  if (document.activeElement !== $("fc_target")) $("fc_target").value = cfg.target;
+  if (document.activeElement !== $("fc_iva")) $("fc_iva").value = cfg.iva;
   list.textContent = "";
   if (!ric.length) list.append(h("p", {class: "empty", text: "Nessuna ricetta. Premi “Nuova ricetta”."}));
-  ric.slice().sort(byNome).forEach(r => {
+  { const wm = ric.filter(r => r.menu && r.prezzo > 0).map(r => costRic(r).porz / netto(r.prezzo) * 100); if (wm.length) list.append(h("p", {class: "meta", text: "Food cost medio dei piatti in menu: " + nf(wm.reduce((a, x) => a + x, 0) / wm.length, 1) + "% (" + wm.length + (wm.length === 1 ? " piatto con prezzo" : " piatti con prezzo") + ")."})); }
+  ric.filter(r => !$("fc_onlym").checked || r.menu).sort(byNome).forEach(r => {
     const card = h("div", {class: "tk"}, h("b", {text: r.nome}), h("small", {text: (r.cat || "Altro") + " · " + r.ingr.length + (r.ingr.length === 1 ? " ingrediente" : " ingredienti") + " · " + r.porz + (r.porz === 1 ? " porzione" : " porzioni") + (r.menu ? " · IN MENU" : "")}));
     if (fasiSum(r)) card.append(h("small", {text: "Tempi: " + fasiSum(r)}));
+    fcBlock(r).forEach(x => card.append(x));
     if (r.proc){ const d = h("details", null, h("summary", {text: "Procedimento"})); d.append(h("div", {text: r.proc, style: "white-space:pre-wrap"})); card.append(d); }
+    card.append(h("label", {class: "chk", style: "margin:10px 0 8px"}, h("input", {type: "checkbox", checked: r.menu ? "checked" : null, onchange: ev => { r.menu = ev.target.checked; save(RK, ric); renderRic(); }}), " In menu"));
     card.append(h("div", {class: "row"},
       h("button", {type: "button", text: "Modifica", onclick: () => { ed = JSON.parse(JSON.stringify(r)); delArm = null; renderRic(); window.scrollTo(0, 0); }}),
-      h("button", {type: "button", text: "In menu", "aria-pressed": String(!!r.menu), onclick: () => { r.menu = !r.menu; save(RK, ric); renderRic(); }}),
       h("button", {type: "button", text: delArm === r.id ? "Conferma: elimina" : "Elimina", onclick: () => { if (delArm === r.id){ ric = ric.filter(z => z.id !== r.id); save(RK, ric); delArm = null; } else delArm = r.id; renderRic(); }})));
     list.append(card);
   });
@@ -2490,7 +2475,7 @@ function renderEd(){
     lab("Nome del piatto", h("input", {type: "text", autocomplete: "off", value: ed.nome, oninput: ev => { ed.nome = ev.target.value; }})),
     lab("Categoria", cat),
     h("div", {class: "row"}, lab("Porzioni della ricetta", numIn(ed.porz, v => { ed.porz = v; upd(); })), lab("Prezzo in menù (IVA inclusa, €)", numIn(ed.prezzo, v => { ed.prezzo = v; upd(); }))),
-    h("label", {class: "chk"}, h("input", {type: "checkbox", checked: ed.menu ? "checked" : null, onchange: ev => { ed.menu = ev.target.checked; }}), " Piatto del menu attuale"),
+    h("label", {class: "chk"}, h("input", {type: "checkbox", checked: ed.menu ? "checked" : null, onchange: ev => { ed.menu = ev.target.checked; }}), " In menu"),
     h("h3", {text: "Ingredienti", style: "margin:10px 0"}));
   ed.ingr.forEach((g, i) => {
     const cs = h("small"), nt = h("small", {style: "color:var(--warn);display:block"});
@@ -2538,11 +2523,8 @@ function renderEd(){
 }
 
 // Menu
-["p", "c"].forEach(t => { $("mnB_" + t).onclick = () => { mnSub = t; renderMenu(); }; });
-function renderMenu(){
-  ["p", "c"].forEach(t => { $("mn_" + t).hidden = t !== mnSub; $("mnB_" + t).setAttribute("aria-pressed", t === mnSub); });
-  if (mnSub === "p") renderMenuP(); else renderMenuC();
-}
+let rcSub = "r";
+["r", "c"].forEach(t => { $("rcB_" + t).onclick = () => { rcSub = t; renderRic(); }; });
 // Pianificazione preparazioni
 const PRK = "haccp-prep-v1";
 let prep = Object.assign({cap: 120, off: [0, 2], ovr: {}, done: {}, extra: []}, load(PRK, {}));
@@ -2659,7 +2641,7 @@ function renderPrepSet(){
   [1, 2, 3, 4, 5, 6, 0].forEach(n => seg.append(h("button", {type: "button", text: DN[n], "aria-pressed": String(!prep.off.includes(n)), style: "flex:1 1 12%;padding:0 2px;min-height:44px", onclick: () => { prep.off = prep.off.includes(n) ? prep.off.filter(x => x !== n) : [...prep.off, n]; save(PRK, prep); renderPrepSet(); }})));
   set.append(seg); box.append(set);
   const menuR = ric.filter(r => r.menu);
-  if (!menuR.length){ box.append(h("p", {class: "empty", text: "Nessun piatto in menu. Spunta i piatti nella scheda Menu."})); return; }
+  if (!menuR.length){ box.append(h("p", {class: "empty", text: "Nessun piatto in menu. Spunta «In menu» nei piatti del Menu cucina."})); return; }
   box.append(h("h3", {text: "Quando servi i piatti", style: "margin:14px 0 6px;font-size:20px"}), h("p", {class: "meta", text: "Per ogni piatto aggiungi le date in cui deve essere pronto. L’app calcola quando preparare ogni fase."}));
   const senza = [];
   menuR.sort(byNome).forEach(r => {
@@ -2678,8 +2660,8 @@ window.prepApi = {render: () => { fillProdList(); renderPrep(); }, today: prepTo
 
 function renderMenuP(){
   const box = $("mn_p"); box.textContent = "";
-  if (!ric.length){ box.append(h("p", {class: "empty", text: "Non hai ancora ricette. Scrivile nella scheda Menu cucina, poi torna qui per scegliere quelle del menu."})); return; }
-  box.append(h("p", {class: "meta", text: (n => n + (n === 1 ? " piatto" : " piatti") + " in menu su " + ric.length + (ric.length === 1 ? " ricetta" : " ricette") + ". Spunta i piatti del menu attuale.")(ric.filter(r => r.menu).length)}));
+  if (!ric.length){ box.append(h("p", {class: "empty", text: "Non hai ancora ricette. Scrivile nella scheda Menu cucina, poi spunta «In menu» sui piatti del menu attuale."})); return; }
+  box.append(h("p", {class: "meta", text: (n => n + (n === 1 ? " piatto" : " piatti") + " in menu su " + ric.length + (ric.length === 1 ? " ricetta" : " ricette") + ". Spunta «In menu» nelle ricette.")(ric.filter(r => r.menu).length)}));
   CATS.forEach(c => {
     const rs = ric.filter(r => (r.cat || "Altro") === c).sort(byNome); if (!rs.length) return;
     const card = h("div", {class: "tk"}, h("b", {text: c}));
@@ -2690,7 +2672,7 @@ function renderMenuP(){
 function renderMenuC(){
   const box = $("mn_c"); box.textContent = "";
   const today = ymd(Date.now()), menuR = ric.filter(r => r.menu);
-  if (!menuR.length){ box.append(h("p", {class: "empty", text: "Nessun piatto in menu. Spunta i piatti del menu attuale nella sezione Piatti."})); return; }
+  if (!menuR.length){ box.append(h("p", {class: "empty", text: "Nessun piatto in menu. Spunta «In menu» nei piatti del Menu cucina (sezione Piatti)."})); return; }
   const used = {}, missing = {};
   menuR.forEach(r => r.ingr.forEach(g => { if (!g.prodotto.trim()) return; const k = pk(g.prodotto); if (k) (used[k] = used[k] || new Set()).add(r.nome); else { const m = missing[key(g.prodotto)] = missing[key(g.prodotto)] || {nome: g.prodotto.trim(), piatti: new Set()}; m.piatti.add(r.nome); } }));
   const ks = Object.keys(used), daC = ks.filter(k => chk[k] !== today).length, daO = ks.filter(k => prods[k].ord).length;
@@ -2723,9 +2705,9 @@ window.magApi = {render: renderMag, scarico: (nome, q, um, doc) => {
   if (UF[um].b !== prods[k].um) return "«" + prods[k].nome + "» è gestito in " + prods[k].um;
   mov.push({id: Date.now() + "s", t: Date.now(), data: today(), tipo: "scarico", k, nome: prods[k].nome, q: q * UF[um].f, p: null, forn: "", doc}); saveAll(); return "ok";
 }};
-window.fcApi = {render: () => { fillProdList(); renderFc(); }};
+
 window.ricApi = {render: () => { fillProdList(); renderRic(); }};
-window.menuApi = {render: () => { fillProdList(); renderMenu(); }};
+
 })();
 
 
