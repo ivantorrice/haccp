@@ -1,0 +1,340 @@
+{
+ "ricette": [
+  {
+   "nome": "Parmigiana",
+   "cat": "Antipasto",
+   "porz": 40,
+   "prezzo": null,
+   "menu": true,
+   "proc": "Base: 2 teglie, circa 40 porzioni.\nGiorno 1 (2 giorni prima): taglio e frittura delle melanzane (circa 2 ore); a scolare. Nel frattempo sugo: aglio in olio, poi i pelati, cottura circa 40 minuti, a fine cottura sale, origano e basilico, poi frullare.\nGiorno 2 (1 giorno prima): montare le teglie a strati (melanzane fritte, parmigiano, sugo) e cuocere in forno a 160 °C per circa 40 minuti.\nDopo la cottura: abbattimento positivo, poi in frigo; si utilizza il giorno dopo.",
+   "ingr": [
+    {
+     "prodotto": "Melanzane",
+     "q": 10,
+     "um": "kg",
+     "nota": ""
+    },
+    {
+     "prodotto": "Pomodori pelati in barattolo",
+     "q": 4,
+     "um": "kg",
+     "nota": ""
+    },
+    {
+     "prodotto": "Aglio (spicchi)",
+     "q": 5,
+     "um": "pz",
+     "nota": ""
+    },
+    {
+     "prodotto": "Basilico",
+     "q": 20,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Origano",
+     "q": 20,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Olio extravergine d'oliva",
+     "q": 5,
+     "um": "l",
+     "nota": ""
+    },
+    {
+     "prodotto": "Amido di mais",
+     "q": 200,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Parmigiano",
+     "q": 1,
+     "um": "kg",
+     "nota": ""
+    },
+    {
+     "prodotto": "Sale",
+     "q": null,
+     "um": "g",
+     "nota": "q.b."
+    },
+    {
+     "prodotto": "Pepe",
+     "q": null,
+     "um": "g",
+     "nota": "q.b."
+    }
+   ],
+   "fasi": [
+    {
+     "g": 2,
+     "min": 120,
+     "nota": "Tagliare e friggere le melanzane",
+     "ant": 0
+    },
+    {
+     "g": 2,
+     "min": 40,
+     "nota": "Sugo di pomodoro (in contemporanea alla frittura)",
+     "ant": 0
+    },
+    {
+     "g": 1,
+     "min": 40,
+     "nota": "Montare le teglie e cuocere in forno a 160 °C (la cottura dura 40 minuti: tempo di montaggio da verificare)",
+     "ant": 0
+    }
+   ]
+  },
+  {
+   "nome": "Polpette",
+   "cat": "Secondo",
+   "porz": 60,
+   "prezzo": null,
+   "menu": true,
+   "proc": "Porzione da 120 g (4 polpette da 30 g). Dalla base con 6 kg di carne escono circa 60 porzioni.\nImpastare tutti gli ingredienti, formare polpette da 30 g, forno a 250 °C per circa 15 minuti, poi abbattimento in negativo e conservazione.\nAl servizio: riscaldare la porzione nel sugo di pomodoro (lo stesso della parmigiana, circa 50 g a porzione).",
+   "ingr": [
+    {
+     "prodotto": "Macinato di maiale",
+     "q": 2,
+     "um": "kg",
+     "nota": ""
+    },
+    {
+     "prodotto": "Macinato di vitello",
+     "q": 2,
+     "um": "kg",
+     "nota": ""
+    },
+    {
+     "prodotto": "Macinato di agnello",
+     "q": 2,
+     "um": "kg",
+     "nota": ""
+    },
+    {
+     "prodotto": "Aglio in polvere",
+     "q": 20,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Noce moscata",
+     "q": 10,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Sale",
+     "q": 80,
+     "um": "g",
+     "nota": "a occhio"
+    },
+    {
+     "prodotto": "Pepe",
+     "q": 10,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Amido di mais",
+     "q": 270,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Parmigiano",
+     "q": 400,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Uova",
+     "q": 12,
+     "um": "pz",
+     "nota": ""
+    },
+    {
+     "prodotto": "Sugo di pomodoro",
+     "q": 3,
+     "um": "kg",
+     "nota": "50 g a porzione, lo stesso della parmigiana"
+    }
+   ],
+   "fasi": [
+    {
+     "g": 1,
+     "min": 120,
+     "nota": "Impastare e formare le polpette (30 g l'una)",
+     "ant": 0
+    },
+    {
+     "g": 1,
+     "min": 15,
+     "nota": "Cuocere in forno a 250 °C, poi abbattere in negativo",
+     "ant": 0
+    }
+   ]
+  },
+  {
+   "nome": "Genovese",
+   "cat": "Primo",
+   "porz": 50,
+   "prezzo": null,
+   "menu": true,
+   "proc": "Base con 3 kg di carne e 10 kg di cipolle. Porzione circa 60 g.\nPORZIONI DA VERIFICARE: 50 è una stima. La prossima volta pesa il prodotto finito e dividilo per 60 g.\nGiorno 1: tagliare le cipolle (circa 40 minuti), metterle a cuocere con la carne per 6-8 ore; la notte si lascia a fiamma pilota.\nGiorno 2: finire la cottura in pentola.\nPoi abbattimento subito in porzioni da 4 (4 porzioni per busta) e conservazione in congelatore.",
+   "ingr": [
+    {
+     "prodotto": "Punta di petto di vitello",
+     "q": 1.5,
+     "um": "kg",
+     "nota": ""
+    },
+    {
+     "prodotto": "Spezzatino di maiale",
+     "q": 1.5,
+     "um": "kg",
+     "nota": ""
+    },
+    {
+     "prodotto": "Cipolle",
+     "q": 10,
+     "um": "kg",
+     "nota": ""
+    },
+    {
+     "prodotto": "Alloro",
+     "q": 50,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Basilico",
+     "q": 100,
+     "um": "g",
+     "nota": ""
+    }
+   ],
+   "fasi": [
+    {
+     "g": 1,
+     "min": 40,
+     "nota": "Tagliare le cipolle e mettere a cuocere con la carne (6-8 ore, la notte a fiamma pilota)",
+     "ant": 0
+    },
+    {
+     "g": 0,
+     "min": null,
+     "nota": "Finire la cottura in pentola, poi abbattere in porzioni da 4 e congelare",
+     "ant": 0
+    }
+   ]
+  },
+  {
+   "nome": "Vitello tonnato",
+   "cat": "Antipasto",
+   "porz": 32,
+   "prezzo": null,
+   "menu": true,
+   "proc": "Carne: bagatello circa 3 kg con sedano, cipolla, carota, alloro, rosmarino, sale, pepe, sfumato con vino bianco. Cottura circa 2 ore a bassa temperatura, cuore a 48 °C. Calo del 15%: da 3 kg crudi circa 2,55 kg cotti.\nPorzione: circa 80 g di carne cotta + circa 20 g di salsa. Dopo la cottura e lo sfreddamento: abbattimento positivo; un pezzo resta in uso, un altro si abbatte in negativo e si congela.\nSalsa tonnata: cuocere i tuorli (100 °C per 3 minuti), aggiungere il tonno, frullare, olio a filo e senape; mettere in sacchetto sottovuoto. In frigo al massimo 5 giorni; si rifà più spesso della carne.",
+   "ingr": [
+    {
+     "prodotto": "Bagatello di vitello",
+     "q": 3,
+     "um": "kg",
+     "nota": ""
+    },
+    {
+     "prodotto": "Sedano",
+     "q": 100,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Cipolla",
+     "q": 100,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Carota",
+     "q": 100,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Alloro",
+     "q": 40,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Rosmarino",
+     "q": 40,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Sale",
+     "q": 80,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Pepe",
+     "q": 20,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Vino bianco",
+     "q": 100,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Tuorlo d'uovo",
+     "q": 200,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Tonno al naturale",
+     "q": 200,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Olio di semi",
+     "q": 100,
+     "um": "g",
+     "nota": ""
+    },
+    {
+     "prodotto": "Senape",
+     "q": 10,
+     "um": "g",
+     "nota": ""
+    }
+   ],
+   "fasi": [
+    {
+     "g": 1,
+     "min": 120,
+     "nota": "Cuocere il bagatello a bassa temperatura (cuore a 48 °C), sfreddare e abbattere",
+     "ant": 0
+    },
+    {
+     "g": 1,
+     "min": null,
+     "nota": "Salsa tonnata: tuorli 100 °C per 3 minuti, tonno, frullare, olio a filo, senape, sottovuoto (tempo da indicare)",
+     "ant": 0
+    }
+   ]
+  }
+ ]
+}
