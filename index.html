@@ -71,6 +71,7 @@ const aiSample = {
 };
 
 // ---- Cloud (Firestore) ----
+const TDEV = [["z1","Freezer 1"],["z2","Freezer 2"],["v1","Vetrina refrigerata bar/deposito"],["b1","Banco refrigerato bar"],["v2","Vetrina refrigerata sala"]];
 const SYNC_KEYS = ["haccp-trac-v1","haccp-temp-v1","haccp-abb-v1","haccp-pul-v1","haccp-nc-v1","haccp-mag-v1","haccp-magp-v1","haccp-fc-v1","haccp-ric-v1","haccp-chk-v1","haccp-mprez-v1","haccp-forn-v1","haccp-prep-v1","haccp-scad-v1","haccp-closed-v1","haccp-closedx-v1","haccp-openx-v1","haccp-bkp-v1","haccp-carta-v1"];
 const rawSet = Storage.prototype.setItem;
 const lsGet = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
@@ -299,6 +300,8 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <p class="meta" id="fHint"></p>
 <label class="f">Lotto<input type="text" id="lotto" autocomplete="off" autocapitalize="characters"></label>
 <label class="f">Scadenza<input type="text" id="scadenza" autocomplete="off" placeholder="GG/MM/AAAA"></label>
+<div class="seg" role="group" aria-label="Tipo di merce" style="margin-bottom:6px"><button type="button" id="taFr" aria-pressed="true">Fresco (max +4 °C)</button><button type="button" id="taSu" aria-pressed="false">Surgelato (−18 °C)</button></div>
+<label class="f">Temperatura di arrivo (°C), prevista dal piano HACCP<input type="number" id="taVal" step="0.1" inputmode="decimal" value="4"></label>
 <div class="cq" data-c="tt"><span>Temperatura del mezzo di trasporto</span><div class="seg" role="group"><button type="button" data-v="C" aria-pressed="false">Conforme</button><button type="button" data-v="NC" aria-pressed="false">Non conforme</button></div></div>
 <div class="cq" data-c="ct"><span>Condizioni del mezzo di trasporto</span><div class="seg" role="group"><button type="button" data-v="C" aria-pressed="false">Conforme</button><button type="button" data-v="NC" aria-pressed="false">Non conforme</button></div></div>
 <div class="cq" data-c="cp"><span>Condizioni del prodotto</span><div class="seg" role="group"><button type="button" data-v="C" aria-pressed="false">Conforme</button><button type="button" data-v="NC" aria-pressed="false">Non conforme</button></div></div>
@@ -324,10 +327,12 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <label class="chk"><input type="checkbox" id="aPosChk" checked> Prima l’ho abbattuto in positivo fino a +4 °C: scrivi anche la scheda positiva</label>
 <div id="aPosFld">
 <label class="f">Temperatura iniziale del positivo (°C)<input type="number" id="aTempPos" step="0.1" inputmode="decimal"></label>
+<div class="row"><label class="f" style="flex:1">Temperatura finale positivo (°C)<input type="number" id="aTfPos" step="0.1" inputmode="decimal"></label><label class="f" style="flex:1">Durata positivo (minuti)<input type="number" id="aDurPos" step="1" inputmode="numeric"></label></div>
 <div class="cq" id="aConfPos" hidden><span>Positivo: raggiunta la temperatura prevista dal piano HACCP</span><div class="seg" role="group"><button type="button" data-v="Sì" aria-pressed="true">Sì</button><button type="button" data-v="No" aria-pressed="false">No</button></div></div>
 </div>
 </div>
 <label class="f"><span id="aTempLbl">Temperatura iniziale (°C)</span><span class="tr"><input type="number" id="aTemp" step="0.1" inputmode="decimal"><button type="button" id="aSign" aria-label="Cambia segno">±</button></span></label>
+<div class="row"><label class="f" style="flex:1">Temperatura finale (°C)<input type="number" id="aTf" step="0.1" inputmode="decimal"></label><label class="f" style="flex:1">Durata (minuti)<input type="number" id="aDur" step="1" inputmode="numeric"></label></div>
 <label class="f">Lotto<input type="text" id="aLot" autocomplete="off" autocapitalize="characters"></label>
 <p class="meta" id="aLotHint"></p>
 <div class="cq" id="aConf" hidden><span id="aConfLbl">Raggiunta la temperatura prevista dal piano HACCP</span><div class="seg" role="group"><button type="button" data-v="Sì" aria-pressed="true">Sì</button><button type="button" data-v="No" aria-pressed="false">No</button></div></div>
@@ -341,7 +346,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 </div>
 <div id="vTemp" hidden>
 <h1>Temperature</h1>
-<p class="sub">Registra le temperature dei due freezer. Ogni misura salva ora e operatore.</p>
+<p class="sub">Registra le temperature dei due freezer e delle celle frigo del bar e della sala (vetrine e banco). Ogni misura salva ora e operatore.</p>
 <div id="t_todo" role="status"></div>
 <label class="f">Data della misura<input id="t_data" type="date"></label>
 <p class="meta" id="t_lateHint" hidden>Stai inserendo una misura per un giorno passato: sul registro comparirà la dicitura “inserita in ritardo”. Inserisci solo misure che hai davvero preso.</p>
@@ -350,7 +355,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <h2>Ultime registrazioni</h2>
 <ul id="t_list"></ul>
 <p class="empty" id="t_empty">Ancora nessuna misura registrata.</p>
-<p class="note">Limite usato: freezer fino a −18 °C. I frigoriferi non sono qui perché registrano da soli. Confronta il limite con il piano HACCP.</p>
+<p class="note">Limiti del piano HACCP: freezer fino a −18 °C, celle frigo non oltre +4 °C. I due armadi MacChef della cucina non sono qui perché registrano da soli.</p>
 </div>
 <div id="vPul" hidden>
 <h1>Pulizia e sanificazione</h1>
@@ -614,6 +619,10 @@ async function shrink(file){
 }
 
 const cond = {tt:"", ct:"", cp:""};
+function taSet(su, force){ const i = $("taVal"); $("taFr").setAttribute("aria-pressed", !su); $("taSu").setAttribute("aria-pressed", su); if (force || !i.dataset.t) { i.value = su ? "-18" : "4"; } }
+$("taFr").onclick = () => taSet(false, true); $("taSu").onclick = () => taSet(true, true);
+$("taVal").addEventListener("input", () => { $("taVal").dataset.t = "1"; });
+function taReset(){ delete $("taVal").dataset.t; taSet(false, true); }
 function resetCond(){ for (const k in cond) cond[k] = "C"; document.querySelectorAll(".cq[data-c]").forEach(q => q.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === "C"))); }
 document.querySelectorAll("#form .cq").forEach(q => q.querySelectorAll("button").forEach(b => { b.onclick = () => { cond[q.dataset.c] = b.dataset.v; q.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); }; }));
 const CLAB = {tt:"temperatura del mezzo di trasporto", ct:"condizioni del mezzo di trasporto", cp:"condizioni del prodotto"};
@@ -662,10 +671,10 @@ $("form").addEventListener("submit", ev => {
   if (!cond.tt || !cond.ct || !cond.cp){ status("Indica se temperatura del mezzo, condizioni del mezzo e condizioni del prodotto sono conformi.", true); return; }
   const op = $("op").value.trim(); save(OPKEY, op);
   const prodNome = $("prodotto").value.trim(), ncList = Object.keys(cond).filter(k => cond[k] === "NC");
-  entries.push({t: Date.now(), prodotto: prodNome, fornitore: $("fornitore").value.trim(), lotto, scadenza: $("scadenza").value.trim(), op, tt: cond.tt, ct: cond.ct, cp: cond.cp});
+  entries.push({t: Date.now(), prodotto: prodNome, fornitore: $("fornitore").value.trim(), lotto, scadenza: $("scadenza").value.trim(), op, ta: (isNaN(parseFloat($("taVal").value)) ? null : parseFloat($("taVal").value)), tt: cond.tt, ct: cond.ct, cp: cond.cp});
   ncList.forEach(k => addNc(ymd(Date.now()), "Merce in arrivo: " + (prodNome || "prodotto") + " (lotto " + lotto + "), " + CLAB[k] + " non conforme", ""));
   save(KEY, entries);
-  $("form").hidden = true; $("prev").hidden = true; $("file").value = ""; $("shootTxt").textContent = "Fotografa etichetta";
+  $("form").hidden = true; $("prev").hidden = true; $("file").value = ""; $("shootTxt").textContent = "Fotografa etichetta"; taReset();
   status(ncList.length ? "Salvato. Ho aperto una non conformità: completa la risoluzione nella scheda Non conformità." : "Salvato nel registro."); render();
 });
 $("cancel").addEventListener("click", () => { $("form").hidden = true; $("prev").hidden = true; $("file").value = ""; status(""); });
@@ -714,12 +723,21 @@ function show(w){
 }
 $("aHaccp").onclick = () => show(lastH); $("aMag").onclick = () => show(lastM);
 let abConf = "Sì", posConf = "Sì", tempAuto = false;
+const ABD = {Positivo: [3, 90], Negativo: [-18, 240]};
+function abDef(){
+  const set = (id, v) => { const e = $(id); if (!e.dataset.t) e.value = v; };
+  const d = ABD[tipo] || ABD.Positivo;
+  set("aTf", d[0]); set("aDur", d[1]); set("aTfPos", ABD.Positivo[0]); set("aDurPos", ABD.Positivo[1]);
+}
+["aTf","aDur","aTfPos","aDurPos"].forEach(id => $(id).addEventListener("input", () => { $(id).dataset.t = "1"; }));
+function abDefReset(){ ["aTf","aDur","aTfPos","aDurPos"].forEach(id => { delete $(id).dataset.t; }); abDef(); }
 function syncPos(){
   const neg = tipo === "Negativo", on = neg && $("aPosChk").checked;
   $("aPosBlk").hidden = !neg; $("aPosFld").hidden = !on;
   $("aTempLbl").textContent = on ? "Temperatura iniziale del negativo (°C), di solito +4" : "Temperatura iniziale (°C)";
   if (on && $("aTemp").value === ""){ $("aTemp").value = "4"; tempAuto = true; }
   if (!on && tempAuto){ $("aTemp").value = ""; tempAuto = false; }
+  abDef();
 }
 $("aPosChk").onchange = syncPos;
 $("aTemp").addEventListener("input", () => { tempAuto = false; });
@@ -734,6 +752,7 @@ function prepAbb(){
   if (!$("aData").value) $("aData").value = ymd(Date.now());
   $("aData").max = ymd(Date.now()); lateHint();
   if (!$("aFirma").value) $("aFirma").value = load(OPKEY, "") || "Ivan Torrice";
+  abDef();
 }
 const norm = x => (x || "").toLowerCase().trim();
 let lotAuto = true;
@@ -749,6 +768,7 @@ function autoLot(){
 }
 $("aProd").addEventListener("input", () => { lotAuto = true; autoLot(); });
 $("aLot").addEventListener("input", () => { lotAuto = false; $("aLotHint").textContent = ""; });
+const nOrNull = s => { const v = parseFloat(String(s).replace(",", ".")); return isNaN(v) ? null : v; };
 function aMsg(m, err){ $("aSt").textContent = m; $("aSt").className = err ? "err" : ""; }
 $("fAbb").addEventListener("submit", ev => {
   ev.preventDefault();
@@ -760,14 +780,15 @@ $("fAbb").addEventListener("submit", ev => {
   let tPos = NaN;
   if (withPos){ tPos = parseFloat($("aTempPos").value); if (isNaN(tPos)){ aMsg("Inserisci la temperatura iniziale del positivo.", true); return; } }
   if (withPos){
-    abb.push({t: Date.now() - 1, data, tipo: "Positivo", prodotto, temp: tPos, lotto, firma, conf: posConf});
+    abb.push({t: Date.now() - 1, data, tipo: "Positivo", prodotto, temp: tPos, tf: nOrNull($("aTfPos").value), dur: nOrNull($("aDurPos").value), lotto, firma, conf: posConf});
     if (posConf === "No") addNc(data, "Abbattimento positivo non conforme: " + prodotto + (lotto ? " (lotto " + lotto + ")" : ""), "");
   }
-  abb.push({t: Date.now(), data, tipo, prodotto, temp, lotto, firma, conf});
+  abb.push({t: Date.now(), data, tipo, prodotto, temp, tf: nOrNull($("aTf").value), dur: nOrNull($("aDur").value), lotto, firma, conf});
   if (pendingAbb != null && tipo === "Negativo"){ const dn = load(SCK, {}); dn[pendingAbb] = "abbattuto"; save(SCK, dn); pendingAbb = null; renderScad(); }
   if (conf === "No") addNc(data, "Abbattimento " + tipo.toLowerCase() + " non conforme: " + prodotto + (lotto ? " (lotto " + lotto + ")" : ""), "");
   save(AKEY, abb);
   $("aProd").value = ""; $("aTemp").value = ""; $("aLot").value = ""; $("aLotHint").textContent = ""; lotAuto = true; $("aData").value = ymd(Date.now()); lateHint();
+  abDefReset();
   $("aTempPos").value = ""; posConf = "Sì"; tempAuto = false; $("aConfPos").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === "Sì"))); syncPos();
   abConf = "Sì"; $("aConf").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === "Sì")));
   aMsg(conf === "No" ? "Scheda salvata. Ho aperto una non conformità: completa la risoluzione nella scheda Non conformità." : (withPos ? "Salvate due schede: abbattimento positivo e negativo." : tipo === "Negativo" && temp < 65 ? "Scheda salvata. Attenzione: sul vostro foglio la temperatura di inizio è 65 °C o più, controlla il valore." : "Scheda salvata.")); renderAbb();
@@ -794,7 +815,10 @@ render();
 const $ = id => document.getElementById(id);
 const DEV = [
   {id:"z1", n:"Freezer 1", min:null, max:-18, start:-20},
-  {id:"z2", n:"Freezer 2", min:null, max:-18, start:-20}
+  {id:"z2", n:"Freezer 2", min:null, max:-18, start:-20},
+  {id:"v1", n:"Vetrina refrigerata bar/deposito", min:null, max:4, start:3},
+  {id:"b1", n:"Banco refrigerato bar", min:null, max:4, start:3},
+  {id:"v2", n:"Vetrina refrigerata sala", min:null, max:4, start:3}
 ];
 const KEY = "haccp-temp-v1", OPKEY = "haccp-op";
 function load(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } }
@@ -915,10 +939,10 @@ render();
 const PKEY = "haccp-pul-v1", NKEY = "haccp-nc-v1";
 let pul = load(PKEY, []), ncs = load(NKEY, []), rep = "sala";
 const TASKS = {
-  sala: [{k:"g", n:"Interventi giornalieri", d:"Pavimenti, pareti, tavoli, sedie", f:"Tutti i giorni e/o più volte al giorno"},
+  sala: [{k:"g", n:"Interventi giornalieri", d:"Pavimenti, pareti, tavoli, sedie, servizi igienici (WC)", f:"Tutti i giorni e/o più volte al giorno"},
          {k:"m", n:"Porte, finestre, soffitti", d:"", f:"Ogni mese"}],
-  cucina: [{k:"g", n:"Interventi giornalieri", d:"Pavimenti, pareti piastrellate, utensili, attrezzature (piano di lavoro, affettatrice, piano cottura, ecc.)", f:"Tutti i giorni e/o più volte al giorno"},
-           {k:"s", n:"Frigoriferi, congelatori, lavastoviglie, forno", d:"", f:"Ogni settimana"},
+  cucina: [{k:"g", n:"Interventi giornalieri", d:"Pavimenti, pareti piastrellate, utensili, attrezzature (piano di lavoro, affettatrice, piano cottura, ecc.), lavello, lavastoviglie (disincrostazione filtri e ugelli)", f:"Tutti i giorni e/o più volte al giorno"},
+           {k:"s", n:"Frigoriferi, congelatori, forno, cappe aspiranti, lavello (disincrostazione)", d:"", f:"Ogni settimana"},
            {k:"m", n:"Porte, finestre, soffitti", d:"", f:"Ogni mese"}]
 };
 const dd = x => new Date(x + "T12:00:00");
@@ -1016,7 +1040,7 @@ function renderOggi(){
   const box = $("oggi"); if (!box) return;
   const todayS = ymd(Date.now()), tE = load("haccp-temp-v1", []), pE = load(PKEY, []), nE = load(NKEY, []);
   const items = [], closed = isClosed(todayS);
-  [["z1", "Freezer 1"], ["z2", "Freezer 2"]].forEach(([id, nm]) => { if (!closed && !tE.some(e => e.dev === id && (e.data || ymd(e.t)) === todayS)) items.push({t: "Temperatura " + nm, s: "Non ancora registrata oggi", go: () => { const t = $("t_data"); t.value = ymd(Date.now()); t.dispatchEvent(new Event("change")); show("t"); }, tg: () => document.querySelector('#t_cards .card[data-dev="' + id + '"]')}); });
+  TDEV.forEach(([id, nm]) => { if (!closed && !tE.some(e => e.dev === id && (e.data || ymd(e.t)) === todayS)) items.push({t: "Temperatura " + nm, s: "Non ancora registrata oggi", go: () => { const t = $("t_data"); t.value = ymd(Date.now()); t.dispatchEvent(new Event("change")); show("t"); }, tg: () => document.querySelector('#t_cards .card[data-dev="' + id + '"]')}); });
   [["sala", "Sala"], ["cucina", "Cucina"]].forEach(([r2, nm]) => { if (!closed && !pE.some(e => e.rep === r2 && e.task === "g" && e.data === todayS)) items.push({t: "Pulizia giornaliera: " + nm, s: "Non ancora segnata oggi", go: () => { $("pData").value = ymd(Date.now()); show("p"); setRep(r2); }, tg: () => document.querySelector('#pTasks .tk[data-task="g"]')}); });
   for (const r2 in TASKS) TASKS[r2].forEach(tk => {
     if (tk.k !== "s" && tk.k !== "m") return;
@@ -1030,7 +1054,7 @@ function renderOggi(){
   if (first){
     const lim = dd(todayS), min = new Date(lim); min.setDate(min.getDate() - 30); let d = dd(first); if (d < min) d = min; let n = 0;
     for (; d < lim; d.setDate(d.getDate() + 1)){ const day = ymd(d); if (isClosed(day)) continue;
-      ["z1", "z2"].forEach(id => { if (!tE.some(e => e.dev === id && (e.data || ymd(e.t)) === day)) n++; });
+      TDEV.forEach(([id]) => { if (!tE.some(e => e.dev === id && (e.data || ymd(e.t)) === day)) n++; });
       ["sala", "cucina"].forEach(r2 => { if (!pE.some(e => e.rep === r2 && e.task === "g" && e.data === day)) n++; }); }
     if (n) items.push({t: n + (n === 1 ? " registrazione dei giorni scorsi" : " registrazioni dei giorni scorsi") + " mancante", s: "Inseriscila in ritardo o segnala che non è stata fatta", late: true, go: () => show("x"), tg: () => document.querySelector("#mList .tk")});
   }
@@ -1066,7 +1090,7 @@ function renderMis(){
   if (first){ let d = dd(first); if (d < min) d = min; for (; d < lim; d.setDate(d.getDate() + 1)) if (!isClosed(ymd(d))) days.push(ymd(d)); }
   days.reverse().forEach(day => {
     const items = [];
-    [["z1", "Freezer 1"], ["z2", "Freezer 2"]].forEach(([id, nm]) => { if (!tE.some(e => e.dev === id && (e.data || ymd(e.t)) === day)) items.push({k: "t", id, nm: "Temperatura " + nm}); });
+    TDEV.forEach(([id, nm]) => { if (!tE.some(e => e.dev === id && (e.data || ymd(e.t)) === day)) items.push({k: "t", id, nm: "Temperatura " + nm}); });
     ["sala", "cucina"].forEach(r2 => { if (!pE.some(e => e.rep === r2 && e.task === "g" && e.data === day)) items.push({k: "p", id: r2, nm: "Pulizia giornaliera, " + (r2 === "cucina" ? "cucina" : "sala")}); });
     items.forEach(it => {
       n++;
@@ -1092,13 +1116,13 @@ function renderMis(){
 }
 const RIST = "Vittoria 1926 Osteria Contemporanea";
 const MESI = ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
-const DEVN = {f1:"Frigo 1", f2:"Frigo 2", z1:"Freezer 1", z2:"Freezer 2"};
+const DEVN = {f1:"Frigo 1", f2:"Frigo 2", z1:"Freezer 1", z2:"Freezer 2", v1:"Vetrina bar/deposito", b1:"Banco bar", v2:"Vetrina sala"};
 const hmE = t => new Date(t).toLocaleTimeString("it-IT", {hour:"2-digit", minute:"2-digit"});
 const numE = v => v.toLocaleString("it-IT", {maximumFractionDigits:1});
 const inMese = (t, ym) => ym === "tutto" || ymd(t).slice(0, 7) === ym;
 const byT = (a, b) => a.t - b.t;
 const REG = {
-  temp: {titolo:"Registro temperature freezer", file:"temperature",
+  temp: {titolo:"Registro temperature freezer e celle frigo", file:"temperature",
     head:["Data","Ora","Momento","Apparecchio","Temp. (°C)","Esito","Azione correttiva","Firma operatore"],
     rows: ym => {
       const tE = load("haccp-temp-v1", []), dO = e => e.data || ymd(e.t), today = ymd(Date.now());
@@ -1109,25 +1133,25 @@ const REG = {
         for (let d = 1; d <= nd; d++){
           const day = ym + "-" + String(d).padStart(2, "0"); if (day < first || day >= today) continue;
           if (isClosed(day)){ if (!tE.some(e => dO(e) === day)) list.push({day, t: 0, row: [dmy(day), "-", "-", "-", "-", "Chiuso", "Giorno di chiusura", ""]}); continue; }
-          ["z1", "z2"].forEach(id => { if (!tE.some(e => e.dev === id && dO(e) === day)) list.push({day, t: 0, row: [dmy(day), "-", "-", DEVN[id], "-", "NON RILEVATA", "Nessuna registrazione", ""]}); });
+          TDEV.forEach(([id]) => { if (!tE.some(e => e.dev === id && dO(e) === day)) list.push({day, t: 0, row: [dmy(day), "-", "-", DEVN[id], "-", "NON RILEVATA", "Nessuna registrazione", ""]}); });
         }
       }
       return list.sort((a, b) => a.day < b.day ? -1 : a.day > b.day ? 1 : a.t - b.t).map(x => x.row);
     }},
   merce: {titolo:"Registro tracciabilità merce in arrivo", file:"merce-in-arrivo",
-    head:["Data","Ora","Prodotto","Fornitore","Lotto","Scadenza","T. mezzo","Cond. mezzo","Cond. prodotto","Firma operatore"],
-    rows: ym => load(KEY, []).filter(e => inMese(e.t, ym)).sort(byT).map(e => [dmy(ymd(e.t)), hmE(e.t), e.prodotto || "", e.fornitore || "", e.lotto || "", e.scadenza || "", e.tt || "-", e.ct || "-", e.cp || "-", e.op || ""])},
+    head:["Data","Ora","Prodotto","Fornitore","Lotto","Scadenza","T. arrivo (°C)","T. mezzo","Cond. mezzo","Cond. prodotto","Firma operatore"],
+    rows: ym => load(KEY, []).filter(e => inMese(e.t, ym)).sort(byT).map(e => [dmy(ymd(e.t)), hmE(e.t), e.prodotto || "", e.fornitore || "", e.lotto || "", e.scadenza || "", e.ta == null ? "-" : numE(e.ta), e.tt || "-", e.ct || "-", e.cp || "-", e.op || ""])},
   pos: {titolo:"Registro abbattimento positivo", file:"abbattimento-positivo", tipo:"Positivo",
-    head:["Data","Ora","Prodotto","Temp. iniziale (°C)","Lotto","Conforme","Firma"]},
+    head:["Data","Ora","Prodotto","Temp. iniziale (°C)","Temp. finale (°C)","Durata (min)","Lotto","Conforme","Firma"]},
   neg: {titolo:"Registro abbattimento negativo", file:"abbattimento-negativo", tipo:"Negativo",
-    head:["Data","Ora","Prodotto","Temp. iniziale (°C)","Lotto","Conforme","Firma"]}
+    head:["Data","Ora","Prodotto","Temp. iniziale (°C)","Temp. finale (°C)","Durata (min)","Lotto","Conforme","Firma"]}
 };
-["pos","neg"].forEach(k => { REG[k].rows = ym => load(AKEY, []).filter(e => e.tipo === REG[k].tipo && (ym === "tutto" || e.data.slice(0, 7) === ym)).sort(byT).map(e => [dmy(e.data), (e.data !== ymd(e.t) ? "inserito il " + dmy(ymd(e.t)) + " " + hmE(e.t) : hmE(e.t)), e.prodotto, numE(e.temp), e.lotto || "-", e.conf || "-", e.firma || ""]); });
+["pos","neg"].forEach(k => { REG[k].rows = ym => load(AKEY, []).filter(e => e.tipo === REG[k].tipo && (ym === "tutto" || e.data.slice(0, 7) === ym)).sort(byT).map(e => [dmy(e.data), (e.data !== ymd(e.t) ? "inserito il " + dmy(ymd(e.t)) + " " + hmE(e.t) : hmE(e.t)), e.prodotto, numE(e.temp), e.tf == null ? "-" : numE(e.tf), e.dur == null ? "-" : String(e.dur), e.lotto || "-", e.conf || "-", e.firma || ""]); });
 
 REG.pulsala = {titolo:"Scheda di pulizia e sanificazione - Sala, deposito e servizi", file:"pulizia-sala", pul:true,
   head:["Data","Interventi giornalieri","Pulizia porte, finestre, soffitti (ogni mese)","Firma e orario"], rows: ym => pulRows("sala", ym)};
 REG.pulcucina = {titolo:"Scheda di pulizia e sanificazione - Cucina", file:"pulizia-cucina", pul:true,
-  head:["Data","Interventi giornalieri","Frigoriferi, congelatori, lavastoviglie, forno (ogni settimana)","Pulizia porte, finestre, soffitti (ogni mese)","Firma e orario"], rows: ym => pulRows("cucina", ym)};
+  head:["Data","Interventi giornalieri","Frigoriferi, congelatori, forno, cappe aspiranti, disincrostazione lavello (ogni settimana)","Pulizia porte, finestre, soffitti (ogni mese)","Firma e orario"], rows: ym => pulRows("cucina", ym)};
 REG.nc = {titolo:"Scheda delle non conformità", file:"non-conformita",
   head:["Data","Descrizione non conformità","Risoluzione","Data chiusura"],
   rows: ym => load(NKEY, []).filter(e => ym === "tutto" || e.data.slice(0, 7) === ym).sort(byT).map(e => [dmy(e.data), e.desc, e.ris || "", e.chiusura ? dmy(e.chiusura) : "Aperta"])};
@@ -1611,7 +1635,7 @@ function qrSvg(text){
       }
     }
     if (!isAbb && !isMerce && /puliz|pulit|sanific|igienizz/.test(t)){
-      const tk = /settimanal|frigorifer|lavastoviglie|forno/.test(t) ? "s" : /mensil|porte|finestre|soffitt/.test(t) ? "m" : "g";
+      const tk = /settimanal|frigorifer|cappa|cappe|forno/.test(t) ? "s" : /mensil|porte|finestre|soffitt/.test(t) ? "m" : "g";
       let reps = /cucina/.test(t) ? ["cucina"] : /\bsala\b|deposito|servizi/.test(t) ? ["sala"] : ["sala", "cucina"];
       if (tk === "s") reps = ["cucina"];
       reps.forEach(r => items.push({k: "p", rep: r, task: tk}));
@@ -1691,7 +1715,7 @@ function qrSvg(text){
           box.append(tipoSeg, lab("Data", idt), dh, lab("Prodotto", ip), pb, tl, hint, lab("Lotto", il), lh, cq);
           card.append(box);
         }, valid: () => !st.data ? "Indica la data." : st.data > today ? "La data non può essere futura." : !st.tipo ? "Scegli abbattimento positivo o negativo." : !st.prodotto.trim() ? "Scrivi il prodotto." : (st.temp === null || isNaN(st.temp)) ? "Inserisci la temperatura iniziale." : (st.tipo === "Negativo" && st.posFirst && (st.tempPos === null || isNaN(st.tempPos))) ? "Inserisci la temperatura iniziale del positivo." : !st.conf ? "Indica se l’abbattimento è conforme." : "",
-        run: () => { const lotto = st.lotto.trim(), prodotto = st.prodotto.trim(); if (st.tipo === "Negativo" && st.posFirst){ abb.push({t: Date.now() - 1, data: st.data, tipo: "Positivo", prodotto, temp: st.tempPos, lotto, firma: who, conf: st.confPos}); if (st.confPos === "No") addNc(st.data, "Abbattimento positivo non conforme: " + prodotto + (lotto ? " (lotto " + lotto + ")" : ""), ""); } abb.push({t: Date.now(), data: st.data, tipo: st.tipo, prodotto, temp: st.temp, lotto, firma: who, conf: st.conf}); save(AKEY, abb); if (st.conf === "No") addNc(st.data, "Abbattimento " + st.tipo.toLowerCase() + " non conforme: " + prodotto + (lotto ? " (lotto " + lotto + ")" : ""), ""); renderAbb(); }};
+        run: () => { const lotto = st.lotto.trim(), prodotto = st.prodotto.trim(); if (st.tipo === "Negativo" && st.posFirst){ abb.push({t: Date.now() - 1, data: st.data, tipo: "Positivo", prodotto, temp: st.tempPos, tf: ABD.Positivo[0], dur: ABD.Positivo[1], lotto, firma: who, conf: st.confPos}); if (st.confPos === "No") addNc(st.data, "Abbattimento positivo non conforme: " + prodotto + (lotto ? " (lotto " + lotto + ")" : ""), ""); } abb.push({t: Date.now(), data: st.data, tipo: st.tipo, prodotto, temp: st.temp, tf: (ABD[st.tipo] || ABD.Positivo)[0], dur: (ABD[st.tipo] || ABD.Positivo)[1], lotto, firma: who, conf: st.conf}); save(AKEY, abb); if (st.conf === "No") addNc(st.data, "Abbattimento " + st.tipo.toLowerCase() + " non conforme: " + prodotto + (lotto ? " (lotto " + lotto + ")" : ""), ""); renderAbb(); }};
       }
       if (it.k === "t"){
         const nm = it.id === "z1" ? "Freezer 1" : "Freezer 2", label = nm + ": " + fmtN(it.v) + " °C, " + fase.toLowerCase();
