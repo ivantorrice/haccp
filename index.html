@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script>
 const FB_CFG = {apiKey:"AIzaSyDgR7_yy8vwORgM1aJcDNU9tkyGfvSDsEk",authDomain:"vittoria-haccp.firebaseapp.com",projectId:"vittoria-haccp",storageBucket:"vittoria-haccp.firebasestorage.app",messagingSenderId:"122368607372",appId:"1:122368607372:web:3b4b70f515ee5eae9367a9"};
-const APPV = "versione 18/11 ore 19:30";
+const APPV = "versione 18/11 ore 20:15";
 const AI_FAST = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.1-flash-lite"}];
 const AI_SMART = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.6-flash"}];
 async function shrinkImg(blob, max){
@@ -3122,7 +3122,11 @@ function barUpd(){
   const tot = total(today), n = active(today).length, lim = limit();
   if (t === "Chiuso" && !n){ bar.style.display = "none"; return; }
   bar.style.display = "block"; bar.className = tot > lim ? "bad" : "";
-  bar.textContent = (t === "Pranzo" ? "Prenotati a pranzo: " : t === "Chiuso" ? "Oggi è chiuso, prenotati: " : "Prenotati stasera: ") + tot + " coperti" + " (" + n + (n === 1 ? " prenotazione" : " prenotazioni") + ") · limite " + lim;
+  const lab = t === "Pranzo" ? "A pranzo" : t === "Chiuso" ? "Oggi (chiuso)" : "Stasera", free = Math.max(0, lim - tot);
+  bar.textContent = "";
+  const l1 = E("div", {style: "font-weight:700", text: lab + ": " + tot + " coperti prenotati · " + (tot > lim ? "limite superato di " + (tot - lim) : free + (free === 1 ? " posto libero" : " posti liberi"))});
+  const l2 = E("div", {style: "font-size:14px;font-weight:400;opacity:.85", text: n + (n === 1 ? " prenotazione" : " prenotazioni") + " · limite " + lim + " · tocca per aprire le prenotazioni"});
+  bar.append(l1, l2);
 }
 bar.onclick = () => { $("aCarta").click(); $("tPren").click(); setDay(ymd(new Date())); };
 const SEEN = "haccp-pren-seen";
