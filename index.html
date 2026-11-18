@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script>
 const FB_CFG = {apiKey:"AIzaSyDgR7_yy8vwORgM1aJcDNU9tkyGfvSDsEk",authDomain:"vittoria-haccp.firebaseapp.com",projectId:"vittoria-haccp",storageBucket:"vittoria-haccp.firebasestorage.app",messagingSenderId:"122368607372",appId:"1:122368607372:web:3b4b70f515ee5eae9367a9"};
-const APPV = "versione 18/11 ore 17:50";
+const APPV = "versione 18/11 ore 19:30";
 const AI_FAST = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.1-flash-lite"}];
 const AI_SMART = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.6-flash"}];
 async function shrinkImg(blob, max){
@@ -89,15 +89,25 @@ const tsMap = () => { try { return JSON.parse(lsGet("haccp-sync-ts") || "{}"); }
 const tsSet = (k, t) => { const m = tsMap(); m[k] = t; try { rawSet.call(localStorage, "haccp-sync-ts", JSON.stringify(m)); } catch(e){} };
 window.cloudState = {text: "Non collegato", ok: false};
 function setCS(text, ok){ window.cloudState = {text, ok: !!ok}; try { dispatchEvent(new CustomEvent("cloudstate")); } catch(e){} }
-let cloud = null; const timers = {};
+let cloud = null; const timers = {}, pend = {};
 Storage.prototype.setItem = function(k, v){
   rawSet.call(this, k, v);
-  if (this === window.localStorage && SYNC_KEYS.includes(k)){ tsSet(k, Date.now()); if (cloud){ clearTimeout(timers[k]); timers[k] = setTimeout(() => cloudPush(k), 1200); } }
+  if (this === window.localStorage && SYNC_KEYS.includes(k)){ tsSet(k, Date.now()); if (cloud){ pend[k] = 1; clearTimeout(timers[k]); timers[k] = setTimeout(() => cloudPush(k), MERGE_KEYS.includes(k) ? 250 : 1200); } }
 };
 const hhmm = () => new Date().toLocaleTimeString("it-IT", {hour: "2-digit", minute: "2-digit"});
 async function cloudPush(k){
   if (!cloud) return;
-  const v = lsGet(k); if (v === null) return;
+  delete pend[k]; let v = lsGet(k); if (v === null) return;
+  if (MERGE_KEYS.includes(k)){
+    try {
+      const rs = await cloud.m.getDocFromServer(cloud.m.doc(cloud.col, k));
+      if (rs.exists() && typeof rs.data().v === "string"){
+        let a = [], b = []; try { a = JSON.parse(v); } catch(e){} try { b = JSON.parse(rs.data().v); } catch(e){}
+        const ms = JSON.stringify(mergeById(Array.isArray(a) ? a : [], Array.isArray(b) ? b : []));
+        if (ms !== v){ rawSet.call(localStorage, k, ms); v = ms; try { dispatchEvent(new Event("prensync")); } catch(e){} }
+      }
+    } catch(e){}
+  }
   if (v.length > 900000){ setCS("Dati troppo grandi per il cloud (" + k + ")", false); return; }
   let ts = tsMap()[k]; if (!ts){ ts = Date.now(); tsSet(k, ts); }
   try { await cloud.m.setDoc(cloud.m.doc(cloud.col, k), {v, ts, by: cloud.dev}); setCS("Sincronizzato alle " + hhmm(), true); }
@@ -129,7 +139,7 @@ async function cloudStart(){
     cloud = {m: fs, col: fs.collection(db, "kitchens", code, "data"), dev};
     let first = true;
     setTimeout(() => { if (first && window.cloudState && !window.cloudState.ok) setCS("Non riesco a raggiungere il database Firestore. Controlla di avere rete e che in Firebase il database sia creato con nome (default). Se è così, riprova tra un minuto.", false); }, 15000);
-    fs.onSnapshot(cloud.col, {includeMetadataChanges: true}, snap => {
+    const applySnap = snap => {
       const m = tsMap(); let changed = false;
       const remote = {}; snap.docs.forEach(d => { remote[d.id] = d.data(); });
       if (snap.metadata.fromCache && first){ setCS("Senza rete: i dati restano sul telefono e si sincronizzano dopo", false); return; }
@@ -155,9 +165,15 @@ async function cloudStart(){
         cloudBanner();
       }
       first = false;
-    }, e => setCS(cloudErr(e), false));
+    };
+    cloud.sync = async () => { try { applySnap(await fs.getDocsFromServer(cloud.col)); return true; } catch(e){ return false; } };
+    fs.onSnapshot(cloud.col, {includeMetadataChanges: true}, applySnap, e => setCS(cloudErr(e), false));
   } catch(e){ cloud = null; setCS(cloudErr(e), false); }
 }
+let lastSync = 0;
+async function cloudResync(force){ if (!cloud || !cloud.sync || (document.hidden && !force)) return false; if (!force && Date.now() - lastSync < 4000) return false; lastSync = Date.now(); return cloud.sync(); }
+document.addEventListener("visibilitychange", () => { if (document.hidden){ Object.keys(pend).forEach(k => { clearTimeout(timers[k]); cloudPush(k); }); } else cloudResync(); });
+addEventListener("online", () => cloudResync()); addEventListener("focus", () => cloudResync()); setInterval(() => cloudResync(), 20000);
 const VAPID_KEY = "BOYBH9c20NBqqH0LGKmKw5yCGONfZrAzfxRE_G0DTJ3xCfvwxAl_imQ_AVAFqS6CsLWwt3Shk5_jAa1fH7rxuaE";
 async function notifOn(){
   const code = (lsGet("haccp-sync-code") || "").trim();
@@ -176,7 +192,7 @@ async function notifOn(){
   rawSet.call(localStorage, "haccp-notif-on", "1");
 }
 window.cloudApi = {
-  start: cloudStart, notifOn,
+  start: cloudStart, notifOn, sync: () => cloudResync(true),
   connect: (code, name) => { rawSet.call(localStorage, "haccp-sync-code", code.trim()); if (name && name.trim()) rawSet.call(localStorage, "haccp-op", JSON.stringify(name.trim())); try { sessionStorage.setItem("haccp-back", "e"); } catch(e){} sessionStorage.removeItem("haccp-sync-rl"); location.reload(); },
   disconnect: () => { try { localStorage.removeItem("haccp-sync-code"); } catch(e){} location.reload(); },
   wipe: () => { try { Object.keys(localStorage).filter(k => k.startsWith("haccp-") && !["haccp-op", "haccp-sync-code", "haccp-dev-id"].includes(k)).forEach(k => localStorage.removeItem(k)); } catch(e){} location.reload(); }
@@ -527,6 +543,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 
 <div id="vPren" hidden>
 <h1>Prenotazioni</h1>
+<p class="meta" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 10px"><span id="pnSync"></span><button type="button" id="pnRef" style="min-height:44px">Aggiorna ora</button></p>
 <div class="seg" role="group" aria-label="Sezioni prenotazioni" style="margin-bottom:12px;flex-wrap:wrap"><button type="button" id="pnB_g" aria-pressed="true">Giornata</button><button type="button" id="pnB_r" aria-pressed="false">Rubrica clienti</button><button type="button" id="pnB_s" aria-pressed="false">Riepilogo</button><button type="button" id="pnB_e" aria-pressed="false">Eventi</button></div>
 <div id="pn_g">
 <div class="row" style="align-items:end;margin-bottom:10px"><button type="button" id="pn_prev" aria-label="Giorno prima" style="min-width:52px">◀</button><label class="f" style="flex:1;margin:0"><input type="date" id="pn_day"></label><button type="button" id="pn_next" aria-label="Giorno dopo" style="min-width:52px">▶</button></div>
@@ -3093,6 +3110,9 @@ $("pn_prev").onclick = () => { const d = parse(day); d.setDate(d.getDate() - 1);
 $("pn_next").onclick = () => { const d = parse(day); d.setDate(d.getDate() + 1); setDay(ymd(d)); };
 $("pn_today").onclick = () => setDay(ymd(new Date()));
 addEventListener("prensync", () => { barUpd(); checkNew(); if ($("vPren").hidden) return; if ($("pn_form").contains(document.activeElement)){ head(); list(); fillDl(); } else render(); });
+const syncTxt = () => { const c = window.cloudState || {}; $("pnSync").textContent = c.text || ""; $("pnSync").style.color = c.ok ? "var(--ok)" : "var(--warn)"; };
+addEventListener("cloudstate", syncTxt); syncTxt();
+$("pnRef").onclick = async () => { const b = $("pnRef"); b.disabled = true; b.textContent = "Aggiorno…"; const ok = window.cloudApi && await cloudApi.sync(); b.disabled = false; b.textContent = "Aggiorna ora"; if (!ok) $("pnSync").textContent = "Non riesco a collegarmi: controlla la rete o il codice cucina."; else render(); };
 window.prenApi = {render};
 // ---- barra "stasera" e avvisi di nuove prenotazioni ----
 const bar = E("button", {type: "button", id: "pnBar", style: "display:none;width:100%;text-align:left;margin:0 0 12px;min-height:60px;font-size:19px"});
