@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script>
 const FB_CFG = {apiKey:"AIzaSyDgR7_yy8vwORgM1aJcDNU9tkyGfvSDsEk",authDomain:"vittoria-haccp.firebaseapp.com",projectId:"vittoria-haccp",storageBucket:"vittoria-haccp.firebasestorage.app",messagingSenderId:"122368607372",appId:"1:122368607372:web:3b4b70f515ee5eae9367a9"};
+const APPV = "versione 18/11 ore 17:30";
 const AI_FAST = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.1-flash-lite"}];
 const AI_SMART = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.6-flash"}];
 async function shrinkImg(blob, max){
@@ -45,7 +46,7 @@ const aiSample = {
   limits: async () => ({images: true}),
   json: async (prompt, opts) => {
     const T0 = performance.now(), lap = []; const mark = n => lap.push(n + " " + ((performance.now() - T0) / 1000).toFixed(1) + "s");
-    aiShow("AI: avvio…");
+    aiShow("AI: avvio… (" + APPV + ")");
     const {ai, getGenerativeModel} = await aiInit(); mark("carico");
     const fast = !opts || opts.modelTier === "quick";
     const parts = [prompt + "\n\nRispondi SOLO con JSON valido, senza testo prima o dopo."];
@@ -64,12 +65,12 @@ const aiSample = {
         const res = await model.generateContent(parts);
         mark(m + " ok");
         let t = res.response.text().trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
-        aiShow("AI: " + lap.join(" · ") + (errs.length ? "\n" + errs.join("\n") : "") + "\n(tocca per chiudere)");
+        aiShow("AI [" + APPV + "]: " + lap.join(" · ") + (errs.length ? "\n" + errs.join("\n") : "") + "\n(tocca per chiudere)");
         return JSON.parse(t);
       } catch(e){ mark(m + " errore"); errs.push(m + ": " + String(e && e.message).replace(/https?:\/\/\S+/g, "").slice(-110)); lastErr = e; }
     }
     }
-    aiShow("AI: " + lap.join(" · ") + "\n" + errs.join("\n") + "\n(tocca per chiudere)");
+    aiShow("AI [" + APPV + "]: " + lap.join(" · ") + "\n" + errs.join("\n") + "\n(tocca per chiudere)");
     throw lastErr || new Error("ai");
   }
 };
@@ -3345,5 +3346,7 @@ lastTxt();
 })();
 </script>
 
+<p id="appVer" style="text-align:center;font-size:12px;color:var(--mute);margin:24px 0 8px"></p>
+<script>document.getElementById("appVer").textContent = "Vittoria 1926 · " + APPV;</script>
 </body>
 </html>
