@@ -72,8 +72,8 @@ const aiSample = {
 
 // ---- Cloud (Firestore) ----
 const TDEV = [["z1","Freezer cucina"],["z2","Freezer magazzino"]];
-const SYNC_KEYS = ["haccp-trac-v1","haccp-temp-v1","haccp-abb-v1","haccp-pul-v1","haccp-nc-v1","haccp-mag-v1","haccp-magp-v1","haccp-fc-v1","haccp-ric-v1","haccp-chk-v1","haccp-mprez-v1","haccp-forn-v1","haccp-prep-v1","haccp-scad-v1","haccp-closed-v1","haccp-closedx-v1","haccp-openx-v1","haccp-bkp-v1","haccp-carta-v1","haccp-pren-v1","haccp-rub-v1","haccp-prenlim-v1"];
-const MERGE_KEYS = ["haccp-pren-v1", "haccp-rub-v1"];
+const SYNC_KEYS = ["haccp-trac-v1","haccp-temp-v1","haccp-abb-v1","haccp-pul-v1","haccp-nc-v1","haccp-mag-v1","haccp-magp-v1","haccp-fc-v1","haccp-ric-v1","haccp-chk-v1","haccp-mprez-v1","haccp-forn-v1","haccp-prep-v1","haccp-scad-v1","haccp-closed-v1","haccp-closedx-v1","haccp-openx-v1","haccp-bkp-v1","haccp-carta-v1","haccp-pren-v1","haccp-rub-v1","haccp-prenlim-v1","haccp-ev-v1"];
+const MERGE_KEYS = ["haccp-pren-v1", "haccp-rub-v1", "haccp-ev-v1"];
 const mergeById = (a, b) => { const m = new Map(); [...a, ...b].forEach(x => { if (!x || !x.id) return; const o = m.get(x.id); if (!o || (x.u || 0) > (o.u || 0) || ((x.u || 0) === (o.u || 0) && JSON.stringify(x) > JSON.stringify(o))) m.set(x.id, x); }); return [...m.values()].sort((p, q) => p.id < q.id ? -1 : p.id > q.id ? 1 : 0); };
 const rawSet = Storage.prototype.setItem;
 try { const o = localStorage.getItem("haccp-op"); if (o && o.charAt(0) !== '"') localStorage.setItem("haccp-op", JSON.stringify(o)); } catch(e){}
@@ -520,7 +520,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 
 <div id="vPren" hidden>
 <h1>Prenotazioni</h1>
-<div class="seg" role="group" aria-label="Sezioni prenotazioni" style="margin-bottom:12px"><button type="button" id="pnB_g" aria-pressed="true">Giornata</button><button type="button" id="pnB_r" aria-pressed="false">Rubrica clienti</button><button type="button" id="pnB_s" aria-pressed="false">Riepilogo</button></div>
+<div class="seg" role="group" aria-label="Sezioni prenotazioni" style="margin-bottom:12px;flex-wrap:wrap"><button type="button" id="pnB_g" aria-pressed="true">Giornata</button><button type="button" id="pnB_r" aria-pressed="false">Rubrica clienti</button><button type="button" id="pnB_s" aria-pressed="false">Riepilogo</button><button type="button" id="pnB_e" aria-pressed="false">Eventi</button></div>
 <div id="pn_g">
 <div class="row" style="align-items:end;margin-bottom:10px"><button type="button" id="pn_prev" aria-label="Giorno prima" style="min-width:52px">◀</button><label class="f" style="flex:1;margin:0"><input type="date" id="pn_day"></label><button type="button" id="pn_next" aria-label="Giorno dopo" style="min-width:52px">▶</button></div>
 <button type="button" id="pn_today" style="width:100%;margin-bottom:12px">Oggi</button>
@@ -528,6 +528,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 </div>
 <div id="pn_r" hidden></div>
 <div id="pn_s" hidden></div>
+<div id="pn_e" hidden></div>
 <datalist id="pn_rub"></datalist>
 </div>
 
@@ -2796,7 +2797,10 @@ const E = (t, p, ...k) => { const e = document.createElement(t); if (p) for (con
 let day = ymd(new Date()), sub = "g", editId = null, over = false, openC = "", per = "f14";
 const limit = () => { const v = Number(rd(KL, 54)); return v > 0 ? v : 54; };
 const live = () => rd(K, []).filter(b => !b.x);
-const active = d => live().filter(b => b.d === d && b.st !== "ann");
+const KE = "haccp-ev-v1", isPrev = b => !!(b.ev && b.es === "prev");
+const menusEv = () => rd(KE, []).filter(m => !m.x).sort((a, b) => (a.n || "").localeCompare(b.n || "", "it"));
+const eur = v => (Number(v) || 0).toLocaleString("it-IT", {minimumFractionDigits: 0, maximumFractionDigits: 2}) + " €";
+const active = d => live().filter(b => b.d === d && b.st !== "ann" && !isPrev(b));
 const total = (d, skip) => active(d).filter(b => b.id !== skip).reduce((a, b) => a + (Number(b.p) || 0), 0);
 const slots = d => { const sun = parse(d).getDay() === 0, a = sun ? [12, 0, 15, 0] : [19, 0, 23, 30], out = []; for (let m = a[0] * 60 + a[1]; m <= a[2] * 60 + a[3]; m += 15) out.push(pad(Math.floor(m / 60)) + ":" + pad(m % 60)); return out; };
 const turno = d => { const w = parse(d).getDay(); return w === 2 ? "Chiuso" : w === 0 ? "Pranzo" : "Cena"; };
@@ -2833,6 +2837,7 @@ function list(){
     c.append(E("b", {style: ann ? "text-decoration:line-through" : "", text: b.t + " · " + b.n + " · " + b.p + (Number(b.p) === 1 ? " persona" : " persone")}));
     if (b.tel){ const a = E("a", {href: "tel:" + b.tel.replace(/[^\d+]/g, ""), text: b.tel}); c.append(E("small", {}, a)); }
     if (b.note) c.append(E("small", {text: b.note}));
+    if (b.ev){ const m = menusEv().find(x => x.id === b.mn); c.append(E("small", {style: "font-weight:700;color:var(--acc)", text: "EVENTO · " + (b.es === "conf" ? "confermato" : "preventivo inviato, non conta nei coperti") + (m ? " · menu: " + m.n + (Number(m.f) > 0 ? " · " + eur(m.f) + " a forfait" : "") : " · nessun menu collegato")})); if (isPrev(b)) c.style.borderStyle = "dashed"; }
     c.append(E("small", {text: (b.by ? "Presa da " + b.by : "") + (b.st === "arr" ? " · arrivata" : ann ? " · annullata" : "")}));
     const row = E("div", {cls: "row", style: "flex-wrap:wrap;margin-top:6px"});
     const tg = (txt, st) => { const x = E("button", {type: "button", text: txt, style: "min-height:44px"}); x.setAttribute("aria-pressed", b.st === st); x.onclick = () => { b.st = b.st === st ? "" : st; upsert(K, b); render(); }; return x; };
@@ -2840,6 +2845,11 @@ function list(){
     const ed = E("button", {type: "button", text: "Modifica", style: "min-height:44px"}); ed.onclick = () => { editId = b.id; over = false; form(); window.scrollTo(0, document.body.scrollHeight); };
     let on = false, tm = null; const del = E("button", {type: "button", text: "Elimina", style: "min-height:44px"});
     del.onclick = () => { if (!on){ on = true; del.textContent = "Tocca ancora"; tm = setTimeout(() => { on = false; del.textContent = "Elimina"; }, 4000); return; } clearTimeout(tm); upsert(K, {id: b.id, x: 1}); render(); };
+    if (b.ev && !ann){
+      if (isPrev(b)){ const cf = E("button", {type: "button", cls: "p", text: "Conferma evento", style: "min-height:44px"}); cf.onclick = () => { b.es = "conf"; upsert(K, b); render(); }; row.append(cf); }
+      const m = menusEv().find(x => x.id === b.mn);
+      if (m){ const pb = E("button", {type: "button", text: "PDF preventivo", style: "min-height:44px"}); pb.onclick = () => pdfEv(m, {n: b.n, d: b.d, p: b.p}); row.append(pb); }
+    }
     row.append(ed, del); c.append(row); box.append(c);
   });
 }
@@ -2861,14 +2871,20 @@ function form(pre){
   n.addEventListener("change", () => { const c = rubrica().find(x => x.n.toLowerCase() === n.value.trim().toLowerCase()); if (c && !t.value.trim()) t.value = c.tel || ""; });
   t.addEventListener("focus", () => { try { t.select(); } catch(e){} });
   const lab = (a, x) => E("label", {cls: "f"}, document.createTextNode(a), x);
-  f.append(lab("Nome", n), lab("Telefono", t), E("div", {cls: "row"}, E("label", {cls: "f", style: "flex:1"}, document.createTextNode("Persone"), p), E("label", {cls: "f", style: "flex:1"}, document.createTextNode("Orario"), s)), lab("Note", nt), warn, go);
+  const evC = E("input", {type: "checkbox", id: "pn_ev"}); evC.checked = !!v.ev;
+  const evS = E("select", {id: "pn_es"}); [["prev", "Preventivo inviato (non conta nei coperti)"], ["conf", "Confermato (conta nei coperti)"]].forEach(([a, l]) => evS.append(E("option", {value: a, text: l}))); evS.value = v.es === "conf" ? "conf" : "prev";
+  const evM = E("select", {id: "pn_em"}); evM.append(E("option", {value: "", text: "— nessun menu —"})); menusEv().forEach(m => evM.append(E("option", {value: m.id, text: m.n + (Number(m.f) > 0 ? " · " + eur(m.f) : "")}))); evM.value = v.mn || "";
+  const evBox = E("div", {style: "padding:10px;border:1px solid var(--line);border-radius:12px;margin:4px 0 8px"}, lab("Stato dell'evento", evS), lab("Menu dalla libreria Eventi", evM)); evBox.hidden = !evC.checked;
+  evC.addEventListener("change", () => { evBox.hidden = !evC.checked; reset(); }); [evS, evM].forEach(x => x.addEventListener("change", reset));
+  const evL = E("label", {style: "display:flex;gap:10px;align-items:center;min-height:48px;margin-top:6px"}, evC, document.createTextNode("Evento con menu e preventivo"));
+  f.append(lab("Nome", n), lab("Telefono", t), E("div", {cls: "row"}, E("label", {cls: "f", style: "flex:1"}, document.createTextNode("Persone"), p), E("label", {cls: "f", style: "flex:1"}, document.createTextNode("Orario"), s)), lab("Note", nt), evL, evBox, warn, go);
   go.onclick = () => {
     const name = n.value.trim(), pax = parseInt(p.value, 10);
     if (!name){ warn.textContent = "Scrivi il nome."; return; }
     if (!(pax >= 1)){ warn.textContent = "Scrivi quante persone."; return; }
-    const lim = limit(), after = total(day, b && b.id) + pax;
-    if (after > lim && !over && !(b && b.st === "ann")){ over = true; go.textContent = "Conferma comunque"; warn.textContent = "Con questa prenotazione i coperti sarebbero " + after + ", oltre il limite di " + lim + ". Tocca ancora per confermare."; return; }
-    const item = Object.assign({}, b || {}, {id: b ? b.id : Date.now().toString(36) + Math.random().toString(36).slice(2, 5), d: day, t: s.value, n: name, tel: t.value.trim(), p: pax, note: nt.value.trim()});
+    const lim = limit(), after = total(day, b && b.id) + pax, soloPrev = evC.checked && evS.value === "prev";
+    if (after > lim && !over && !soloPrev && !(b && b.st === "ann")){ over = true; go.textContent = "Conferma comunque"; warn.textContent = "Con questa prenotazione i coperti sarebbero " + after + ", oltre il limite di " + lim + ". Tocca ancora per confermare."; return; }
+    const item = Object.assign({}, b || {}, {id: b ? b.id : Date.now().toString(36) + Math.random().toString(36).slice(2, 5), d: day, t: s.value, n: name, tel: t.value.trim(), p: pax, note: nt.value.trim(), ev: evC.checked ? 1 : undefined, es: evC.checked ? evS.value : undefined, mn: evC.checked ? evM.value : undefined});
     if (!b){ item.by = op(); item.st = ""; try { item.dv = localStorage.getItem("haccp-dev-id") || ""; } catch(e){} }
     upsert(K, item); addRub(name, t.value); editId = null; over = false; render(); form();
   };
@@ -2965,15 +2981,105 @@ function sumView(){
     E("span", {style: "width:44px;text-align:right;font-variant-numeric:tabular-nums", text: x.n ? x.a.toFixed(0) : "–"}))));
   box.append(E("p", {cls: "meta", text: "I dati sono quelli delle prenotazioni inserite nell'app: più la usate, più il riepilogo diventa utile. Il martedì (chiuso) non conta nelle medie; i giorni aperti senza prenotazioni contano come serate vuote."}));
 }
+
+// ---- Eventi: libreria menu + PDF preventivo ----
+let edM = null, delM = "";
+const labE = (a, x) => E("label", {cls: "f"}, document.createTextNode(a), x);
+const rids = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+function evView(){
+  const box = $("pn_e"); box.textContent = "";
+  if (edM){ evEditor(box); return; }
+  const nw = E("button", {type: "button", cls: "p", text: "Nuovo menu evento", style: "width:100%;margin-bottom:12px;min-height:52px"});
+  nw.onclick = () => { edM = {n: "", f: "", pp: false, note: "", c: "", d: "", p: "", portate: [{t: "Antipasto", r: ""}, {t: "Primo", r: ""}, {t: "Secondo", r: ""}, {t: "Dolce", r: ""}]}; evView(); window.scrollTo(0, 0); };
+  box.append(E("p", {cls: "meta", text: "Qui prepari e conservi i menu per eventi e feste. Poi li colleghi a una prenotazione (spunta «Evento con menu e preventivo») e li esporti in PDF da mandare al cliente."}), nw);
+  const ms = menusEv();
+  if (!ms.length) box.append(E("p", {cls: "empty", text: "Nessun menu evento salvato."}));
+  ms.forEach(m => {
+    const used = live().filter(b => b.mn === m.id).length, nd = (m.portate || []).reduce((a, x) => a + String(x.r || "").split("\n").filter(z => z.trim()).length, 0);
+    const c = E("div", {cls: "tk"}, E("b", {text: m.n}), E("small", {text: (m.portate || []).length + " portate · " + nd + " piatti" + (Number(m.f) > 0 ? " · " + eur(m.f) + " a forfait" : " · forfait non indicato") + (used ? " · collegato a " + used + (used === 1 ? " prenotazione" : " prenotazioni") : "")}));
+    const row = E("div", {cls: "row", style: "flex-wrap:wrap;margin-top:6px"});
+    const mk = (t, fn, cl) => { const x = E("button", {type: "button", text: t, cls: cl || "", style: "min-height:44px"}); x.onclick = fn; return x; };
+    row.append(mk("PDF", () => pdfEv(m, {}), "p"), mk("Modifica", () => { edM = JSON.parse(JSON.stringify(m)); evView(); window.scrollTo(0, 0); }),
+      mk("Copia", () => { const n = JSON.parse(JSON.stringify(m)); n.id = rids(); n.n = m.n + " (copia)"; upsert(KE, n); evView(); }),
+      mk(delM === m.id ? "Tocca ancora" : "Elimina", () => { if (delM === m.id){ upsert(KE, {id: m.id, x: 1}); delM = ""; } else { delM = m.id; setTimeout(() => { if (delM === m.id){ delM = ""; if (sub === "e" && !edM) evView(); } }, 4000); } evView(); }));
+    c.append(row); box.append(c);
+  });
+}
+function evEditor(box){
+  const d = edM, f = E("div", {cls: "tk"});
+  f.append(E("b", {text: d.id ? "Modifica menu evento" : "Nuovo menu evento"}));
+  const inp = (label, key, type, ph) => { const i = E("input", {type: type || "text", placeholder: ph || "", autocomplete: "off"}); if (type === "number"){ i.setAttribute("inputmode", "decimal"); i.setAttribute("step", "any"); } i.value = d[key] == null ? "" : d[key]; i.addEventListener("input", () => { d[key] = i.value; }); return labE(label, i); };
+  f.append(inp("Nome del menu (es. Compleanno Mario)", "n"), inp("Prezzo a forfait per tutto l'evento (€)", "f", "number", "es. 2700"));
+  const pp = E("input", {type: "checkbox"}); pp.checked = !!d.pp; pp.addEventListener("change", () => { d.pp = pp.checked; });
+  f.append(E("label", {style: "display:flex;gap:10px;align-items:center;min-height:48px"}, pp, document.createTextNode("Nel PDF mostra anche il prezzo a persona")));
+  f.append(inp("Per chi (facoltativo, compare nel PDF)", "c"), E("div", {cls: "row"}, E("div", {style: "flex:1"}, inp("Data (facoltativa)", "d", "date")), E("div", {style: "flex:1"}, inp("Persone", "p", "number"))));
+  const ric = (() => { try { return (JSON.parse(localStorage.getItem("haccp-ric-v1")) || []).map(r => r.nome).filter(Boolean).sort((a, b) => a.localeCompare(b, "it")); } catch(e){ return []; } })();
+  d.portate.forEach((po, i) => {
+    const w = E("div", {style: "border:1px solid var(--line);border-radius:12px;padding:10px;margin:10px 0"});
+    const ti = E("input", {type: "text", placeholder: "Portata (es. Antipasto)", autocomplete: "off"}); ti.value = po.t || ""; ti.addEventListener("input", () => { po.t = ti.value; });
+    const ta = E("textarea", {rows: "4", placeholder: "Un piatto per riga"}); ta.value = po.r || ""; ta.addEventListener("input", () => { po.r = ta.value; });
+    w.append(labE("Portata", ti), labE("Piatti (uno per riga)", ta));
+    if (ric.length){ const se = E("select", {}); se.append(E("option", {value: "", text: "+ Aggiungi un piatto dal Menu cucina…"})); ric.forEach(n => se.append(E("option", {value: n, text: n}))); se.addEventListener("change", () => { if (!se.value) return; po.r = (po.r ? po.r.replace(/\s+$/, "") + "\n" : "") + se.value; evView(); }); w.append(se); }
+    const rm = E("button", {type: "button", text: "Togli questa portata", style: "min-height:44px;margin-top:8px"}); rm.onclick = () => { d.portate.splice(i, 1); evView(); }; w.append(rm);
+    f.append(w);
+  });
+  const ad = E("button", {type: "button", text: "Aggiungi portata", style: "width:100%;min-height:48px;margin-bottom:8px"}); ad.onclick = () => { d.portate.push({t: "", r: ""}); evView(); }; f.append(ad);
+  const nt = E("textarea", {rows: "2", placeholder: "es. bevande escluse, torta inclusa"}); nt.value = d.note || ""; nt.addEventListener("input", () => { d.note = nt.value; });
+  f.append(labE("Note nel PDF (facoltative)", nt));
+  const err = E("p", {cls: "s bad", style: "min-height:1.3em;margin:6px 0"});
+  const save = () => {
+    if (!String(d.n || "").trim()){ err.textContent = "Scrivi il nome del menu."; return null; }
+    const it = JSON.parse(JSON.stringify(d)); it.n = it.n.trim(); it.f = Number(String(it.f).replace(",", ".")) || 0; it.p = it.p === "" ? "" : Number(it.p) || ""; it.portate = it.portate.filter(x => (x.t || "").trim() || (x.r || "").trim()); if (!it.id) it.id = rids();
+    upsert(KE, it); return it;
+  };
+  const sv = E("button", {type: "button", cls: "p", text: "Salva menu", style: "width:100%;min-height:52px"}); sv.onclick = () => { if (save()){ edM = null; evView(); } };
+  const pd = E("button", {type: "button", text: "Salva e crea PDF", style: "width:100%;margin-top:8px;min-height:48px"}); pd.onclick = () => { const it = save(); if (it){ edM = null; evView(); pdfEv(it, {}); } };
+  const cx = E("button", {type: "button", text: "Annulla", style: "width:100%;margin-top:8px;min-height:48px"}); cx.onclick = () => { edM = null; evView(); };
+  f.append(err, sv, pd, cx); box.append(f);
+}
+async function pdfEv(m, o){
+  if (!window.jspdf){ toast("Non riesco a caricare il generatore di PDF. Controlla la connessione e riprova."); return; }
+  const doc = new window.jspdf.jsPDF({unit: "mm", format: "a4"}), W = 210, M = 20, INK = [59, 52, 42], ACC = [107, 94, 74], MUTE = [122, 111, 93];
+  let y = 16; const ctr = (txt, size, style, col, gap) => { doc.setFont("helvetica", style); doc.setFontSize(size); doc.setTextColor(col[0], col[1], col[2]); doc.splitTextToSize(String(txt), W - 2 * M).forEach(l => { if (y > 276){ doc.addPage(); y = 20; } doc.text(l, W / 2, y, {align: "center"}); y += gap; }); };
+  const im = document.getElementById("brandLogo");
+  try { if (im && /^data:image\/png/.test(im.src) && im.naturalWidth){ const h = 24, w = h * im.naturalWidth / im.naturalHeight; doc.addImage(im.src, "PNG", (W - w) / 2, y, w, h); y += h + 8; } else y += 6; } catch(e){ y += 6; }
+  ctr("Vittoria 1926 · Osteria Contemporanea", 10, "normal", MUTE, 6); y += 4;
+  ctr("PREVENTIVO", 11, "bold", ACC, 7);
+  ctr((o && o.n) || m.n, 22, "bold", INK, 9); y += 1;
+  const dt = (o && o.d) || m.d, pe = (o && o.p) || m.p, meta = [];
+  if (!(o && o.n) && m.c) meta.push("Per " + m.c);
+  if (dt){ const w = parse(dt); meta.push(DN[w.getDay()] + " " + w.getDate() + " " + MN[w.getMonth()] + " " + w.getFullYear()); }
+  if (pe) meta.push(pe + (Number(pe) === 1 ? " persona" : " persone"));
+  if (meta.length) ctr(meta.join("  ·  "), 11, "normal", MUTE, 6);
+  y += 4; doc.setDrawColor(ACC[0], ACC[1], ACC[2]); doc.setLineWidth(0.4); doc.line(M + 30, y, W - M - 30, y); y += 10;
+  (m.portate || []).forEach(po => {
+    if (po.t && po.t.trim()) ctr(po.t.trim().toUpperCase(), 11, "bold", ACC, 7);
+    String(po.r || "").split("\n").map(z => z.trim()).filter(Boolean).forEach(z => ctr(z, 12, "normal", INK, 6));
+    y += 6;
+  });
+  if (m.note && m.note.trim()){ y += 2; ctr(m.note.trim(), 10, "italic", MUTE, 5); y += 4; }
+  if (Number(m.f) > 0){
+    if (y > 250){ doc.addPage(); y = 20; }
+    doc.setDrawColor(ACC[0], ACC[1], ACC[2]); doc.line(M + 30, y, W - M - 30, y); y += 9;
+    ctr("Prezzo a forfait per l'evento", 10, "normal", MUTE, 7);
+    ctr(eur(m.f), 22, "bold", INK, 9);
+    if (m.pp && Number(pe) > 0) ctr("pari a circa " + eur(Math.round(Number(m.f) / Number(pe) * 100) / 100) + " a persona (" + pe + " persone)", 11, "normal", MUTE, 6);
+  }
+  let dl = null; try { dl = await claude.use("downloads"); } catch(e){ dl = null; }
+  const fn = "Preventivo-" + String((o && o.n) || m.n).replace(/[^A-Za-z0-9À-ÿ]+/g, "-").replace(/^-|-$/g, "") + ".pdf";
+  if (!dl){ toast("Il salvataggio dei file non è disponibile qui. Apri la pagina dal browser."); return; }
+  try { await dl.save({filename: fn, data: doc.output("blob")}); toast("PDF pronto: " + fn); } catch(e){ toast(e && e.code === "declined" ? "Salvataggio annullato." : "Non sono riuscito a salvare il PDF. Riprova."); }
+}
 function render(){
   try { barUpd(); } catch(e){}
-  ["g", "r", "s"].forEach(k => { $("pn_" + k).hidden = k !== sub; $("pnB_" + k).setAttribute("aria-pressed", k === sub); });
+  ["g", "r", "s", "e"].forEach(k => { $("pn_" + k).hidden = k !== sub; $("pnB_" + k).setAttribute("aria-pressed", k === sub); });
   $("pn_day").value = day; fillDl();
-  if (sub === "g"){ head(); list(); if (!$("pn_form").firstChild) form(); } else if (sub === "r") rubView(); else sumView();
+  if (sub === "g"){ head(); list(); if (!$("pn_form").firstChild) form(); } else if (sub === "r") rubView(); else if (sub === "e") evView(); else sumView();
 }
 $("pnB_g").onclick = () => { sub = "g"; render(); };
 $("pnB_r").onclick = () => { sub = "r"; render(); };
 $("pnB_s").onclick = () => { sub = "s"; render(); };
+$("pnB_e").onclick = () => { sub = "e"; render(); };
 const setDay = d => { day = d; editId = null; over = false; $("pn_form").textContent = ""; render(); };
 $("pn_day").addEventListener("change", () => { if ($("pn_day").value) setDay($("pn_day").value); });
 $("pn_prev").onclick = () => { const d = parse(day); d.setDate(d.getDate() - 1); setDay(ymd(d)); };
@@ -3001,7 +3107,7 @@ function toast(msg){
   d.onclick = () => { d.remove(); $("aCarta").click(); $("tPren").click(); }; document.body.appendChild(d); setTimeout(() => { if (d.parentNode) d.remove(); }, 12000);
 }
 async function checkNew(){
-  const now = live().filter(b => b.d >= ymd(new Date()) && b.st !== "ann"), prev = seenSet();
+  const now = live().filter(b => b.d >= ymd(new Date()) && b.st !== "ann" && !isPrev(b)), prev = seenSet();
   const ids = new Set(prev || []); now.forEach(b => ids.add(b.id));
   if (prev){
     const dv = (() => { try { return localStorage.getItem("haccp-dev-id") || ""; } catch(e){ return ""; } })();
@@ -3023,13 +3129,13 @@ barUpd(); checkNew();
 "use strict";
 const $ = id => document.getElementById(id);
 const HK = ["haccp-trac-v1","haccp-forn-v1","haccp-temp-v1","haccp-abb-v1","haccp-pul-v1","haccp-nc-v1","haccp-chk-v1","haccp-scad-v1","haccp-prep-v1","haccp-closed-v1","haccp-closedx-v1","haccp-openx-v1","haccp-bkp-v1"];
-const XK = ["haccp-mag-v1","haccp-magp-v1","haccp-fc-v1","haccp-ric-v1","haccp-mprez-v1","haccp-carta-v1","haccp-pren-v1","haccp-rub-v1","haccp-prenlim-v1"];
+const XK = ["haccp-mag-v1","haccp-magp-v1","haccp-fc-v1","haccp-ric-v1","haccp-mprez-v1","haccp-carta-v1","haccp-pren-v1","haccp-rub-v1","haccp-prenlim-v1","haccp-ev-v1"];
 const KEYS = HK.concat(XK);
 const HN = {"haccp-trac-v1": "Merce in arrivo (lotti)", "haccp-forn-v1": "Fornitori (schede complete)", "haccp-temp-v1": "Temperature", "haccp-abb-v1": "Abbattimento", "haccp-pul-v1": "Pulizie", "haccp-nc-v1": "Non conformità", "haccp-chk-v1": "Controlli", "haccp-scad-v1": "Scadenze", "haccp-prep-v1": "Preparazioni", "haccp-closed-v1": "Giorni di chiusura", "haccp-closedx-v1": "Chiusure straordinarie", "haccp-openx-v1": "Aperture straordinarie", "haccp-bkp-v1": "Backup mensili PDF"};
-const MERGE = ["haccp-pren-v1", "haccp-rub-v1"];
-const SHEETS = {"haccp-pren-v1": "Prenotazioni", "haccp-rub-v1": "Rubrica clienti", "haccp-trac-v1": "Merce in arrivo", "haccp-temp-v1": "Temperature", "haccp-abb-v1": "Abbattimento", "haccp-pul-v1": "Pulizie", "haccp-nc-v1": "Non conformita", "haccp-mag-v1": "Magazzino", "haccp-magp-v1": "Magazzino prodotti", "haccp-fc-v1": "Food cost", "haccp-ric-v1": "Menu cucina", "haccp-chk-v1": "Controlli", "haccp-mprez-v1": "Prezzi", "haccp-forn-v1": "Fornitori", "haccp-prep-v1": "Preparazioni", "haccp-scad-v1": "Scadenze", "haccp-carta-v1": "Carta"};
+const MERGE = ["haccp-pren-v1", "haccp-rub-v1", "haccp-ev-v1"];
+const SHEETS = {"haccp-ev-v1": "Menu evento", "haccp-pren-v1": "Prenotazioni", "haccp-rub-v1": "Rubrica clienti", "haccp-trac-v1": "Merce in arrivo", "haccp-temp-v1": "Temperature", "haccp-abb-v1": "Abbattimento", "haccp-pul-v1": "Pulizie", "haccp-nc-v1": "Non conformita", "haccp-mag-v1": "Magazzino", "haccp-magp-v1": "Magazzino prodotti", "haccp-fc-v1": "Food cost", "haccp-ric-v1": "Menu cucina", "haccp-chk-v1": "Controlli", "haccp-mprez-v1": "Prezzi", "haccp-forn-v1": "Fornitori", "haccp-prep-v1": "Preparazioni", "haccp-scad-v1": "Scadenze", "haccp-carta-v1": "Carta"};
 const LAB = {t: "Data e ora", data: "Data", prodotto: "Prodotto", fornitore: "Fornitore", lotto: "Lotto", scadenza: "Scadenza", op: "Operatore", firma: "Firma", dev: "Apparecchio", v: "Valore", note: "Note", conf: "Conforme", temp: "Temperatura", tf: "Temp. finale", dur: "Durata", tipo: "Tipo", rep: "Reparto", task: "Compito", desc: "Descrizione", ris: "Risoluzione", chiusura: "Chiusura", nome: "Nome", out: "Fuori limite", late: "In ritardo", fase: "Fase"};
-const LABP = {d: "Data", t: "Ora", n: "Nome", p: "Persone", tel: "Telefono", nota: "Nota", note: "Note", st: "Stato", fn: "Nota fissa", dt: "Ultimo cambio", cr: "Creata il"};
+const LABP = {d: "Data", t: "Ora", n: "Nome", p: "Persone", tel: "Telefono", nota: "Nota", note: "Note", st: "Stato", fn: "Nota fissa", dt: "Ultimo cambio", cr: "Creata il", ev: "Evento", es: "Stato evento", mn: "Menu (codice)"};
 const LABR = {n: "Nome", tel: "Telefono", fn: "Nota fissa", nota: "Nota", note: "Note"};
 const HIDE = {"haccp-pren-v1": ["id", "u", "x"], "haccp-rub-v1": ["id", "u", "x"]};
 const pad = n => String(n).padStart(2, "0");
@@ -3106,6 +3212,11 @@ const fmt = (k, v) => {
 };
 function table(key, val){
   const hide = HIDE[key] || [], lab = key === "haccp-pren-v1" ? Object.assign({}, LAB, LABP) : key === "haccp-rub-v1" ? Object.assign({}, LAB, LABR) : LAB;
+  if (key === "haccp-ev-v1" && Array.isArray(val)){
+    const rows = [["Menu", "Forfait (€)", "Per chi", "Data", "Persone", "Note", "Portate e piatti"]];
+    val.filter(m => m && !m.x).forEach(m => rows.push([m.n || "", Number(m.f) || "", m.c || "", m.d || "", m.p || "", m.note || "", (m.portate || []).map(x => (x.t || "") + ": " + String(x.r || "").split("\n").filter(z => z.trim()).join(", ")).join(" | ")]));
+    return rows;
+  }
   if (key === "haccp-carta-v1" && Array.isArray(val)){
     const rows = [["Pagina", "Sezione", "Voce", "Descrizione", "Allergeni", "Prezzo"]];
     val.forEach(p => (p.sezioni || []).forEach(s => (s.voci || []).forEach(v => rows.push([p.titolo || "", s.nome || "", v.n || "", v.d || "", v.a || "", v.p || ""]))));
