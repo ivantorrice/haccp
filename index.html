@@ -71,7 +71,7 @@ const aiSample = {
 };
 
 // ---- Cloud (Firestore) ----
-const TDEV = [["z1","Freezer 1"],["z2","Freezer 2"],["v1","Vetrina refrigerata bar/deposito"],["b1","Banco refrigerato bar"],["v2","Vetrina refrigerata sala"]];
+const TDEV = [["z1","Freezer cucina"],["z2","Freezer magazzino"]];
 const SYNC_KEYS = ["haccp-trac-v1","haccp-temp-v1","haccp-abb-v1","haccp-pul-v1","haccp-nc-v1","haccp-mag-v1","haccp-magp-v1","haccp-fc-v1","haccp-ric-v1","haccp-chk-v1","haccp-mprez-v1","haccp-forn-v1","haccp-prep-v1","haccp-scad-v1","haccp-closed-v1","haccp-closedx-v1","haccp-openx-v1","haccp-bkp-v1","haccp-carta-v1","haccp-pren-v1","haccp-rub-v1","haccp-prenlim-v1"];
 const MERGE_KEYS = ["haccp-pren-v1", "haccp-rub-v1"];
 const mergeById = (a, b) => { const m = new Map(); [...a, ...b].forEach(x => { if (!x || !x.id) return; const o = m.get(x.id); if (!o || (x.u || 0) > (o.u || 0) || ((x.u || 0) === (o.u || 0) && JSON.stringify(x) > JSON.stringify(o))) m.set(x.id, x); }); return [...m.values()].sort((p, q) => p.id < q.id ? -1 : p.id > q.id ? 1 : 0); };
@@ -387,7 +387,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 </div>
 <div id="vTemp" hidden>
 <h1>Temperature</h1>
-<p class="sub">Registra le temperature dei due freezer e delle celle frigo del bar e della sala (vetrine e banco). Ogni misura salva ora e operatore.</p>
+<p class="sub">Registra la temperatura del freezer della cucina e del freezer del magazzino. Ogni misura salva ora e operatore.</p>
 <div id="t_todo" role="status"></div>
 <label class="f">Data della misura<input id="t_data" type="date"></label>
 <p class="meta" id="t_lateHint" hidden>Stai inserendo una misura per un giorno passato: sul registro comparirà la dicitura “inserita in ritardo”. Inserisci solo misure che hai davvero preso.</p>
@@ -396,7 +396,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <h2>Ultime registrazioni</h2>
 <ul id="t_list"></ul>
 <p class="empty" id="t_empty">Ancora nessuna misura registrata.</p>
-<p class="note">Limiti del piano HACCP: freezer fino a −18 °C, celle frigo non oltre +4 °C. I due armadi MacChef della cucina non sono qui perché registrano da soli.</p>
+<p class="note">Limite del piano HACCP: freezer fino a −18 °C. Frigoriferi, vetrine e banchi non sono qui perché non contengono cibo da controllare (o registrano da soli).</p>
 </div>
 <div id="vPul" hidden>
 <h1>Pulizia e sanificazione</h1>
@@ -457,7 +457,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <div id="mg_ff" hidden></div>
 </div>
 <div id="mg_s" hidden>
-<p class="meta">Prodotti sotto la scorta minima (la imposti da Giacenze, con “Minima”) e prodotti segnati “Da ordinare” dal Menu.</p>
+<p class="meta">Prodotti sotto la scorta minima, prodotti segnati “Da ordinare” da Giacenze e prodotti aggiunti a mano.</p>
 <div id="mg_sl"></div>
 </div>
 </div>
@@ -873,12 +873,14 @@ render();
 
 const $ = id => document.getElementById(id);
 const DEV = [
-  {id:"z1", n:"Freezer 1", min:null, max:-18, start:-20},
-  {id:"z2", n:"Freezer 2", min:null, max:-18, start:-20},
+  {id:"z1", n:"Freezer cucina", min:null, max:-18, start:-20},
+  {id:"z2", n:"Freezer magazzino", min:null, max:-18, start:-20}
+];
+const DEVL = DEV.concat([
   {id:"v1", n:"Vetrina refrigerata bar/deposito", min:null, max:4, start:3},
   {id:"b1", n:"Banco refrigerato bar", min:null, max:4, start:3},
   {id:"v2", n:"Vetrina refrigerata sala", min:null, max:4, start:3}
-];
+]);
 const KEY = "haccp-temp-v1", OPKEY = "haccp-op";
 function load(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } }
 function save(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
@@ -977,7 +979,7 @@ function render(){
   const items = entries.slice().sort((a,b) => b.t - a.t).slice(0, 12);
   const ul = $("t_list"); ul.textContent = "";
   items.forEach(e => {
-    const d = DEV.find(x => x.id === e.dev);
+    const d = DEVL.find(x => x.id === e.dev) || {id: e.dev, n: e.dev, min: null, max: null};
     const li = document.createElement("li");
     const left = document.createElement("div");
     const nm = document.createElement("b"); nm.textContent = d ? d.n : e.dev;
@@ -1119,6 +1121,7 @@ function renderOggi(){
   }
   const sc = scadList().filter(x => x.left != null && x.left <= 2);
   if (sc.length){ const sc0 = sc.filter(x => x.left < 0).length; items.push({t: sc.length + (sc.length === 1 ? " prodotto scaduto o in scadenza" : " prodotti scaduti o in scadenza"), s: sc.slice(0, 3).map(x => (x.e.prodotto || "?") + " (" + (x.left < 0 ? "scaduto" : x.left === 0 ? "oggi" : x.left === 1 ? "domani" : "tra 2 giorni") + ")").join(", ") + (sc.length > 3 ? "…" : ""), late: sc0 > 0, go: () => show("m"), tg: () => $("scBox")}); }
+  [["haccp-hbk-last", "Backup HACCP di oggi", "Salva il file dei registri obbligatori", "xhSave"], ["haccp-xbk-last", "Backup gestione di oggi", "Salva l'Excel con prenotazioni, rubrica, magazzino e carta", "xbSave"]].forEach(([lk, tt, ss, bid]) => { let l = ""; try { l = localStorage.getItem(lk) || ""; } catch(e){} if (l !== todayS) items.push({t: tt, s: ss, go: () => show("e"), tg: () => $(bid)}); });
   { const dn = new Date(); if (dn.getDate() <= 10){ const pd = new Date(dn.getFullYear(), dn.getMonth() - 1, 1), pym = pd.getFullYear() + "-" + String(pd.getMonth() + 1).padStart(2, "0");
       if (load("haccp-bkp-v1", "") !== pym) items.push({t: "Backup di " + pd.toLocaleDateString("it-IT", {month: "long", year: "numeric"}), s: "Scarica tutti i registri del mese in un solo PDF", go: () => { show("e"); $("eMese").value = pym; }, tg: () => $("bkBtn")}); } }
   const nc = nE.filter(e => !e.chiusura).length;
@@ -1175,13 +1178,13 @@ function renderMis(){
 }
 const RIST = "Vittoria 1926 Osteria Contemporanea";
 const MESI = ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
-const DEVN = {f1:"Frigo 1", f2:"Frigo 2", z1:"Freezer 1", z2:"Freezer 2", v1:"Vetrina bar/deposito", b1:"Banco bar", v2:"Vetrina sala"};
+const DEVN = {f1:"Frigo 1", f2:"Frigo 2", z1:"Freezer cucina", z2:"Freezer magazzino", v1:"Vetrina bar/deposito", b1:"Banco bar", v2:"Vetrina sala"};
 const hmE = t => new Date(t).toLocaleTimeString("it-IT", {hour:"2-digit", minute:"2-digit"});
 const numE = v => v.toLocaleString("it-IT", {maximumFractionDigits:1});
 const inMese = (t, ym) => ym === "tutto" || ymd(t).slice(0, 7) === ym;
 const byT = (a, b) => a.t - b.t;
 const REG = {
-  temp: {titolo:"Registro temperature freezer e celle frigo", file:"temperature",
+  temp: {titolo:"Registro temperature freezer", file:"temperature",
     head:["Data","Ora","Momento","Apparecchio","Temp. (°C)","Esito","Azione correttiva","Firma operatore"],
     rows: ym => {
       const tE = load("haccp-temp-v1", []), dO = e => e.data || ymd(e.t), today = ymd(Date.now());
@@ -1917,7 +1920,7 @@ function qrSvg(text){
   }
   function parse(raw){
     let t = norm(raw); const items = [], isAbb = /abbatt/.test(t), isMerce = !isAbb && /merce|arrivat|ricevut|consegn|\blotto\b/.test(t);
-    t = t.replace(/\b(freezer|congelator[ei])\s+(primo|prima)\b/g, "$1 1").replace(/\b(freezer|congelator[ei])\s+(secondo|seconda)\b/g, "$1 2");
+    t = t.replace(/\b(freezer|congelator[ei])\s+cucina\b/g, "$1 1").replace(/\b(freezer|congelator[ei])\s+(magazzino|deposito)\b/g, "$1 2").replace(/\b(freezer|congelator[ei])\s+(primo|prima)\b/g, "$1 1").replace(/\b(freezer|congelator[ei])\s+(secondo|seconda)\b/g, "$1 2");
     const fase = /durante|turno|pomeriggio|sera\b/.test(t) ? "Durante il turno" : /mattin/.test(t) ? "Mattino" : (new Date().getHours() < 12 ? "Mattino" : "Durante il turno");
     if (!isAbb && !isMerce && /freezer|congelator|temperatur/.test(t)){
       const re = /(?:freezer|congelator[ei])\s*(?:numero\s*)?(?:(\d)(?![\d.]))?/g, ms = []; let m;
@@ -2012,7 +2015,7 @@ function qrSvg(text){
         run: () => { const lotto = st.lotto.trim(), prodotto = st.prodotto.trim(); if (st.tipo === "Negativo" && st.posFirst){ abb.push({t: Date.now() - 1, data: st.data, tipo: "Positivo", prodotto, temp: st.tempPos, tf: ABD.Positivo[0], dur: ABD.Positivo[1], lotto, firma: who, conf: st.confPos}); if (st.confPos === "No") addNc(st.data, "Abbattimento positivo non conforme: " + prodotto + (lotto ? " (lotto " + lotto + ")" : ""), ""); } abb.push({t: Date.now(), data: st.data, tipo: st.tipo, prodotto, temp: st.temp, tf: (ABD[st.tipo] || ABD.Positivo)[0], dur: (ABD[st.tipo] || ABD.Positivo)[1], lotto, firma: who, conf: st.conf}); save(AKEY, abb); if (st.conf === "No") addNc(st.data, "Abbattimento " + st.tipo.toLowerCase() + " non conforme: " + prodotto + (lotto ? " (lotto " + lotto + ")" : ""), ""); renderAbb(); }};
       }
       if (it.k === "t"){
-        const nm = it.id === "z1" ? "Freezer 1" : "Freezer 2", label = nm + ": " + fmtN(it.v) + " °C, " + fase.toLowerCase();
+        const nm = it.id === "z1" ? "Freezer cucina" : "Freezer magazzino", label = nm + ": " + fmtN(it.v) + " °C, " + fase.toLowerCase();
         if (isClosed(today)) return {label, skip: "oggi il ristorante è chiuso"};
         if (it.v < -50 || it.v > 100) return {label, skip: "valore poco credibile, ripeti"};
         if (it.v > -18) return {label, skip: "fuori limite (serve −18 °C o meno): registrala dalla scheda Temperature con l’azione correttiva"};
@@ -2032,7 +2035,7 @@ function qrSvg(text){
   function showPanel(raw){
     const pl = plan(raw), card = el("div"); card.className = "tk";
     card.append(el("b", pl.length ? "Ho capito:" : "Non ho capito un comando."), el("small", "«" + raw + "»"));
-    if (!pl.length) card.append(el("div", "Prova così: “freezer uno meno ventuno”, “pulizia giornaliera cucina fatta”, “abbattimento negativo polpette il 13”, “merce in arrivo carne lotto…”.", "margin-top:8px"));
+    if (!pl.length) card.append(el("div", "Prova così: “freezer cucina meno ventuno”, “pulizia giornaliera cucina fatta”, “abbattimento negativo polpette il 13”, “merce in arrivo carne lotto…”.", "margin-top:8px"));
     pl.forEach(p => { if (p.ui){ card.append(el("div", p.label, "margin-top:10px;font-weight:600")); p.ui(card); } else card.append(el("div", (p.run ? "Registro: " : "Non registro: ") + p.label + (p.skip ? " (" + p.skip + ")" : ""), "margin-top:8px;" + (p.run ? "" : "color:var(--warn)"))); });
     const err = el("p", "", "color:var(--warn);font-weight:600;margin:10px 0 0"); card.append(err);
     const row = el("div"); row.className = "row"; row.style.marginTop = "12px";
@@ -2138,8 +2141,9 @@ function renderStock(){
     const card = h("div", {class: "tk"}, h("b", {text: p.nome}),
       h("p", {class: "s " + (s < 0 || low ? "bad" : "ok"), text: "Giacenza: " + qf(s) + " " + p.um + (p.min > 0 ? " · minima " + qf(p.min) + " " + p.um : "") + (s < 0 ? " (controlla: scarichi superiori ai carichi)" : low ? " · sotto scorta" : "")}),
       h("small", {text: lp ? "Ultimo prezzo: " + eur(lp.p) + " / " + p.um + " = " + ppu(lp.p, p.um) + (lp.forn ? " · " + lp.forn : "") + " · " + dmy(lp.data) : "Prezzo non registrato"}));
+    if (p.ord) card.append(lab("Quanto ordinare (es. 2 kg, 3 cartoni)", h("input", {type: "text", value: p.oq || "", placeholder: "facoltativo", oninput: ev => { p.oq = ev.target.value.trim(); saveAll(); }})));
     const tg = m => () => { open = open && open.k === k && open.mode === m ? null : {k, mode: m}; renderStock(); };
-    card.append(h("div", {class: "row"}, h("button", {type: "button", text: "Usato", onclick: tg("u")}), h("button", {type: "button", text: "Conto", onclick: tg("c")}), h("button", {type: "button", text: "Minima", onclick: tg("m")})));
+    card.append(h("div", {class: "row"}, h("button", {type: "button", text: "Usato", onclick: tg("u")}), h("button", {type: "button", text: "Conto", onclick: tg("c")}), h("button", {type: "button", text: "Minima", onclick: tg("m")}), h("button", {type: "button", class: p.ord ? "p" : "", text: p.ord ? "In lista ✓" : "Da ordinare", onclick: () => { p.ord = !p.ord; if (!p.ord) p.oq = ""; saveAll(); renderStock(); }})));
     if (open && open.k === k){
       let v = null, u = p.um; const err = h("p", {class: "s bad"});
       const sel = umSel(compat(p.um), p.um, x => { u = x; });
@@ -2292,16 +2296,30 @@ function renderPrezzi(){
 // ---------- Lista spesa
 function renderSpesa(){
   const box = $("mg_sl"); box.textContent = "";
-  const low = Object.keys(prods).filter(k => (prods[k].min > 0 && stock(k) < prods[k].min) || prods[k].ord);
-  if (!low.length){ box.append(h("p", {class: "empty", text: Object.values(prods).some(p => p.min > 0) ? "Niente da ordinare." : "Nessuna scorta minima impostata e nessun prodotto segnato da ordinare."})); return; }
-  const by = {};
-  low.forEach(k => { const c = carichi(k)[0], f = (c && c.forn) || "Fornitore non noto"; (by[f] = by[f] || []).push(k); });
+  const extra = Array.isArray(cfg.extra) ? cfg.extra : (cfg.extra = []), saveX = () => save(FK, cfg);
+  const inN = h("input", {type: "text", placeholder: "Prodotto (anche se non è in magazzino)", autocomplete: "off"}), inQ = h("input", {type: "text", placeholder: "Quantità (es. 2 kg)", autocomplete: "off"}), inF = h("input", {type: "text", placeholder: "Fornitore", autocomplete: "off", setAttribute: null});
+  inF.setAttribute("list", "mg_fdl");
+  const dl = h("datalist", {id: "mg_fdl"}); [...new Set(sup.map(x => x.nome).filter(Boolean))].sort((a, b) => a.localeCompare(b, "it")).forEach(n => dl.append(h("option", {value: n})));
+  const err = h("p", {class: "s bad"});
+  const addB = h("button", {type: "button", class: "p", text: "Aggiungi alla lista", onclick: () => { const n = inN.value.trim(); if (!n){ err.textContent = "Scrivi il nome del prodotto."; return; } extra.push({id: Date.now().toString(36), n, q: inQ.value.trim(), f: inF.value.trim()}); saveX(); renderSpesa(); }});
+  box.append(h("div", {class: "tk"}, h("b", {text: "Aggiungi un prodotto a mano"}), h("small", {text: "Per ordinare anche ciò che non hai in magazzino."}), lab("Prodotto", inN), h("div", {class: "row"}, lab("Quantità", inQ), lab("Fornitore", inF)), dl, err, addB));
+  const items = [];
+  Object.keys(prods).filter(k => (prods[k].min > 0 && stock(k) < prods[k].min) || prods[k].ord).forEach(k => {
+    const p = prods[k], s = stock(k), isLow = p.min > 0 && s < p.min, c = carichi(k)[0];
+    const line = p.oq ? p.nome + ": " + p.oq : isLow ? p.nome + ": mancano " + qf(p.min - s) + " " + p.um : p.nome + ": da ordinare";
+    items.push({f: (c && c.forn) || "Fornitore non noto", line, det: line + " (giacenza " + qf(s) + " " + p.um + (p.min > 0 ? ", minima " + qf(p.min) : "") + ")", done: p.ord ? () => { p.ord = false; p.oq = ""; saveAll(); renderSpesa(); } : null});
+  });
+  extra.forEach(x => items.push({f: x.f || "Fornitore non noto", line: x.n + (x.q ? ": " + x.q : ": da ordinare"), det: x.n + (x.q ? ": " + x.q : "") + " (aggiunto a mano)", done: () => { cfg.extra = extra.filter(y => y.id !== x.id); saveX(); renderSpesa(); }}));
+  if (!items.length){ box.append(h("p", {class: "empty", text: "Niente da ordinare."})); return; }
+  const by = {}; items.forEach(it => (by[it.f] = by[it.f] || []).push(it));
   let text = "";
   Object.keys(by).sort().forEach(f => {
-    text += f + "\n";
-    const card = h("div", {class: "tk"}, h("b", {text: f}));
-    by[f].forEach(k => { const p = prods[k], s = stock(k), isLow = p.min > 0 && s < p.min, line = isLow ? p.nome + ": mancano " + qf(p.min - s) + " " + p.um : p.nome + ": da ordinare"; text += "- " + line + "\n"; card.append(h("small", {text: line + " (giacenza " + qf(s) + " " + p.um + (p.min > 0 ? ", minima " + qf(p.min) : "") + ")"})); if (p.ord) card.append(h("button", {type: "button", class: "mgx", text: "Ordinato", onclick: () => { p.ord = false; saveAll(); renderSpesa(); }})); });
-    box.append(card); text += "\n";
+    const card = h("div", {class: "tk"}, h("b", {text: f})), ft = f + "\n" + by[f].map(it => "- " + it.line).join("\n");
+    text += ft + "\n\n";
+    by[f].forEach(it => { card.append(h("small", {text: it.det})); if (it.done) card.append(h("button", {type: "button", class: "mgx", text: "Ordinato", onclick: it.done})); });
+    const fst = h("small", {text: ""});
+    card.append(h("button", {type: "button", class: "mgx", text: "Copia per " + f, onclick: async () => { try { await navigator.clipboard.writeText(ft); fst.textContent = "Copiato: ora incolla su WhatsApp."; } catch(e){ fst.textContent = "Non riesco a copiare: usa l'elenco completo qui sotto."; } }}), fst);
+    box.append(card);
   });
   const ta = h("textarea", {readonly: "readonly", rows: "8", value: text.trim()});
   const st = h("p", {class: "meta"});
