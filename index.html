@@ -51,19 +51,23 @@ const aiSample = {
     const parts = [prompt + "\n\nRispondi SOLO con JSON valido, senza testo prima o dopo."];
     for (const im of ((opts && opts.images) || [])){ const sm = await shrinkImg(im, fast ? 1280 : 1800); parts.push({inlineData: {mimeType: sm.type || "image/jpeg", data: await b64(sm)}}); }
     mark("foto");
-    let lastErr = null; const errs = [];
+    let lastErr = null, errs = [];
+    const TRANS = /high demand|overload|unavailable|temporar|\b(429|500|502|503|504)\b|fetch|abort|timeout|timed out|network/i;
+    for (let round = 0; round < 3; round++){
+    if (round){ if (!errs.length || !errs.every(x => TRANS.test(x))) break; aiShow("AI: i server di Google sono sovraccarichi, riprovo (" + (round + 1) + "/3)…"); await new Promise(r => setTimeout(r, 3000 * round)); lap.push("riprovo " + ((performance.now() - T0) / 1000).toFixed(0) + "s"); errs = []; }
     for (const at of (fast ? AI_FAST : AI_SMART)){
       const m = at.m + (at.tc === 0 ? "+nothink" : "");
       try {
         const gc = {responseMimeType: "application/json", temperature: 0.1};
         if (at.tc === 0) gc.thinkingConfig = {thinkingBudget: 0};
-        const model = getGenerativeModel(ai, {model: at.m, generationConfig: gc}, {timeout: 25000});
+        const model = getGenerativeModel(ai, {model: at.m, generationConfig: gc}, {timeout: fast ? 25000 : 45000});
         const res = await model.generateContent(parts);
         mark(m + " ok");
         let t = res.response.text().trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
         aiShow("AI: " + lap.join(" · ") + (errs.length ? "\n" + errs.join("\n") : "") + "\n(tocca per chiudere)");
         return JSON.parse(t);
       } catch(e){ mark(m + " errore"); errs.push(m + ": " + String(e && e.message).replace(/https?:\/\/\S+/g, "").slice(-110)); lastErr = e; }
+    }
     }
     aiShow("AI: " + lap.join(" · ") + "\n" + errs.join("\n") + "\n(tocca per chiudere)");
     throw lastErr || new Error("ai");
