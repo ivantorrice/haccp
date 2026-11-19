@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script>
 const FB_CFG = {apiKey:"AIzaSyDgR7_yy8vwORgM1aJcDNU9tkyGfvSDsEk",authDomain:"vittoria-haccp.firebaseapp.com",projectId:"vittoria-haccp",storageBucket:"vittoria-haccp.firebasestorage.app",messagingSenderId:"122368607372",appId:"1:122368607372:web:3b4b70f515ee5eae9367a9"};
-const APPV = "versione 18/11 ore 22:00";
+const APPV = "versione 19/11 ore 11:30";
 const AI_FAST = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.1-flash-lite"}];
 const AI_SMART = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.6-flash"}];
 async function shrinkImg(blob, max){
@@ -64,6 +64,7 @@ const aiSample = {
         if (at.tc === 0) gc.thinkingConfig = {thinkingBudget: 0};
         const model = getGenerativeModel(ai, {model: at.m, generationConfig: gc}, {timeout: fast ? 25000 : 30000});
         const res = await model.generateContent(parts);
+        try { if (window.aiCount) window.aiCount(); } catch(e){}
         mark(m + " ok");
         let t = res.response.text().trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
         aiShow("AI [" + APPV + "]: " + lap.join(" · ") + (errs.length ? "\n" + errs.join("\n") : "") + "\n(tocca per chiudere)");
@@ -79,8 +80,8 @@ const aiSample = {
 
 // ---- Cloud (Firestore) ----
 const TDEV = [["z1","Freezer cucina"],["z2","Freezer magazzino"]];
-const SYNC_KEYS = ["haccp-trac-v1","haccp-temp-v1","haccp-abb-v1","haccp-pul-v1","haccp-nc-v1","haccp-mag-v1","haccp-magp-v1","haccp-fc-v1","haccp-ric-v1","haccp-chk-v1","haccp-mprez-v1","haccp-forn-v1","haccp-prep-v1","haccp-scad-v1","haccp-closed-v1","haccp-closedx-v1","haccp-openx-v1","haccp-bkp-v1","haccp-carta-v1","haccp-pren-v1","haccp-rub-v1","haccp-prenlim-v1","haccp-ev-v1"];
-const MERGE_KEYS = ["haccp-pren-v1", "haccp-rub-v1", "haccp-ev-v1"];
+const SYNC_KEYS = ["haccp-trac-v1","haccp-temp-v1","haccp-abb-v1","haccp-pul-v1","haccp-nc-v1","haccp-mag-v1","haccp-magp-v1","haccp-fc-v1","haccp-ric-v1","haccp-chk-v1","haccp-mprez-v1","haccp-forn-v1","haccp-prep-v1","haccp-scad-v1","haccp-closed-v1","haccp-closedx-v1","haccp-openx-v1","haccp-bkp-v1","haccp-carta-v1","haccp-pren-v1","haccp-rub-v1","haccp-prenlim-v1","haccp-ev-v1","haccp-lista-v1"];
+const MERGE_KEYS = ["haccp-pren-v1", "haccp-rub-v1", "haccp-ev-v1", "haccp-lista-v1"];
 const mergeById = (a, b) => { const m = new Map(); [...a, ...b].forEach(x => { if (!x || !x.id) return; const o = m.get(x.id); if (!o || (x.u || 0) > (o.u || 0) || ((x.u || 0) === (o.u || 0) && JSON.stringify(x) > JSON.stringify(o))) m.set(x.id, x); }); return [...m.values()].sort((p, q) => p.id < q.id ? -1 : p.id > q.id ? 1 : 0); };
 const rawSet = Storage.prototype.setItem;
 try { const o = localStorage.getItem("haccp-op"); if (o && o.charAt(0) !== '"') localStorage.setItem("haccp-op", JSON.stringify(o)); } catch(e){}
@@ -488,8 +489,9 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <div id="vPrep" hidden>
 <h1>Preparazioni</h1>
 <p class="sub">Cosa preparare ogni giorno, in base ai piatti del menu e al tempo che hai (4:30–6:30).</p>
-<div class="seg" role="group" aria-label="Sezioni preparazioni"><button type="button" id="prB_o" aria-pressed="true">Oggi</button><button type="button" id="prB_p" aria-pressed="false">Piano</button><button type="button" id="prB_s" aria-pressed="false">Date e tempi</button></div>
-<div id="pr_o"></div>
+<div class="seg" role="group" aria-label="Sezioni preparazioni"><button type="button" id="prB_l" aria-pressed="true">Lista</button><button type="button" id="prB_o" aria-pressed="false">Oggi</button><button type="button" id="prB_p" aria-pressed="false">Piano</button><button type="button" id="prB_s" aria-pressed="false">Date e tempi</button></div>
+<div id="pr_l"></div>
+<div id="pr_o" hidden></div>
 <div id="pr_p" hidden></div>
 <div id="pr_s" hidden></div>
 </div>
@@ -2620,7 +2622,7 @@ let rcSub = "r";
 // Pianificazione preparazioni
 const PRK = "haccp-prep-v1";
 let prep = Object.assign({cap: 120, off: [0, 2], ovr: {}, done: {}, extra: []}, load(PRK, {}));
-let prSub = "o";
+let prSub = "l";
 const DN = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"], DF = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
 const dAdd = (s, n) => { const d = new Date(s + "T12:00:00"); d.setDate(d.getDate() + n); return ymd(d); };
 const dow = s => new Date(s + "T12:00:00").getDay();
@@ -2667,10 +2669,10 @@ function planPrep(){
   return {days: Object.keys(byDay).sort().map(d => ({d, tasks: byDay[d], tot: byDay[d].reduce((a, t) => a + t.min, 0)})), cap: prep.cap};
 }
 function prepToday(){ const d = planPrep().days.find(x => x.d === ymd(Date.now())); const ts = d ? d.tasks.filter(t => !prep.done[t.key]) : []; return {n: ts.length, min: ts.reduce((a, t) => a + t.min, 0)}; }
-["o", "p", "s"].forEach(t => { $("prB_" + t).onclick = () => { prSub = t; renderPrep(); }; });
+["l", "o", "p", "s"].forEach(t => { $("prB_" + t).onclick = () => { prSub = t; renderPrep(); }; });
 function renderPrep(){
-  ["o", "p", "s"].forEach(t => { $("pr_" + t).hidden = t !== prSub; $("prB_" + t).setAttribute("aria-pressed", t === prSub); });
-  if (prSub === "o") renderPrepOggi(); else if (prSub === "p") renderPrepPiano(); else renderPrepSet();
+  ["l", "o", "p", "s"].forEach(t => { $("pr_" + t).hidden = t !== prSub; $("prB_" + t).setAttribute("aria-pressed", t === prSub); });
+  if (prSub === "l"){ if (window.listaRender) window.listaRender(); } else if (prSub === "o") renderPrepOggi(); else if (prSub === "p") renderPrepPiano(); else renderPrepSet();
 }
 function taskCard(t, after){
   const done = !!prep.done[t.key];
@@ -3160,15 +3162,15 @@ barUpd(); checkNew();
 "use strict";
 const $ = id => document.getElementById(id);
 const HK = ["haccp-trac-v1","haccp-forn-v1","haccp-temp-v1","haccp-abb-v1","haccp-pul-v1","haccp-nc-v1","haccp-chk-v1","haccp-scad-v1","haccp-prep-v1","haccp-closed-v1","haccp-closedx-v1","haccp-openx-v1","haccp-bkp-v1"];
-const XK = ["haccp-mag-v1","haccp-magp-v1","haccp-fc-v1","haccp-ric-v1","haccp-mprez-v1","haccp-carta-v1","haccp-pren-v1","haccp-rub-v1","haccp-prenlim-v1","haccp-ev-v1"];
+const XK = ["haccp-mag-v1","haccp-magp-v1","haccp-fc-v1","haccp-ric-v1","haccp-mprez-v1","haccp-carta-v1","haccp-pren-v1","haccp-rub-v1","haccp-prenlim-v1","haccp-ev-v1","haccp-lista-v1"];
 const KEYS = HK.concat(XK);
 const HN = {"haccp-trac-v1": "Merce in arrivo (lotti)", "haccp-forn-v1": "Fornitori (schede complete)", "haccp-temp-v1": "Temperature", "haccp-abb-v1": "Abbattimento", "haccp-pul-v1": "Pulizie", "haccp-nc-v1": "Non conformità", "haccp-chk-v1": "Controlli", "haccp-scad-v1": "Scadenze", "haccp-prep-v1": "Preparazioni", "haccp-closed-v1": "Giorni di chiusura", "haccp-closedx-v1": "Chiusure straordinarie", "haccp-openx-v1": "Aperture straordinarie", "haccp-bkp-v1": "Backup mensili PDF"};
-const MERGE = ["haccp-pren-v1", "haccp-rub-v1", "haccp-ev-v1"];
-const SHEETS = {"haccp-ev-v1": "Menu evento", "haccp-pren-v1": "Prenotazioni", "haccp-rub-v1": "Rubrica clienti", "haccp-trac-v1": "Merce in arrivo", "haccp-temp-v1": "Temperature", "haccp-abb-v1": "Abbattimento", "haccp-pul-v1": "Pulizie", "haccp-nc-v1": "Non conformita", "haccp-mag-v1": "Magazzino", "haccp-magp-v1": "Magazzino prodotti", "haccp-fc-v1": "Food cost", "haccp-ric-v1": "Menu cucina", "haccp-chk-v1": "Controlli", "haccp-mprez-v1": "Prezzi", "haccp-forn-v1": "Fornitori", "haccp-prep-v1": "Preparazioni", "haccp-scad-v1": "Scadenze", "haccp-carta-v1": "Carta"};
+const MERGE = ["haccp-pren-v1", "haccp-rub-v1", "haccp-ev-v1", "haccp-lista-v1"];
+const SHEETS = {"haccp-lista-v1": "Lista preparazioni", "haccp-ev-v1": "Menu evento", "haccp-pren-v1": "Prenotazioni", "haccp-rub-v1": "Rubrica clienti", "haccp-trac-v1": "Merce in arrivo", "haccp-temp-v1": "Temperature", "haccp-abb-v1": "Abbattimento", "haccp-pul-v1": "Pulizie", "haccp-nc-v1": "Non conformita", "haccp-mag-v1": "Magazzino", "haccp-magp-v1": "Magazzino prodotti", "haccp-fc-v1": "Food cost", "haccp-ric-v1": "Menu cucina", "haccp-chk-v1": "Controlli", "haccp-mprez-v1": "Prezzi", "haccp-forn-v1": "Fornitori", "haccp-prep-v1": "Preparazioni", "haccp-scad-v1": "Scadenze", "haccp-carta-v1": "Carta"};
 const LAB = {t: "Data e ora", data: "Data", prodotto: "Prodotto", fornitore: "Fornitore", lotto: "Lotto", scadenza: "Scadenza", op: "Operatore", firma: "Firma", dev: "Apparecchio", v: "Valore", note: "Note", conf: "Conforme", temp: "Temperatura", tf: "Temp. finale", dur: "Durata", tipo: "Tipo", rep: "Reparto", task: "Compito", desc: "Descrizione", ris: "Risoluzione", chiusura: "Chiusura", nome: "Nome", out: "Fuori limite", late: "In ritardo", fase: "Fase"};
 const LABP = {d: "Data", t: "Ora", n: "Nome", p: "Persone", tel: "Telefono", nota: "Nota", note: "Note", st: "Stato", fn: "Nota fissa", dt: "Ultimo cambio", cr: "Creata il", ev: "Evento", es: "Stato evento", mn: "Menu (codice)"};
 const LABR = {n: "Nome", tel: "Telefono", fn: "Nota fissa", nota: "Nota", note: "Note"};
-const HIDE = {"haccp-pren-v1": ["id", "u", "x"], "haccp-rub-v1": ["id", "u", "x"]};
+const HIDE = {"haccp-lista-v1": ["id", "u", "x", "rid"], "haccp-pren-v1": ["id", "u", "x"], "haccp-rub-v1": ["id", "u", "x"]};
 const pad = n => String(n).padStart(2, "0");
 const rd = k => { try { return localStorage.getItem(k); } catch(e){ return null; } };
 const esc = s => String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -3439,6 +3441,117 @@ function all(){ Object.keys(cfg).forEach(k => { build(k); render(k); }); }
 const os = window.show;
 if (typeof os === "function") window.show = function(){ const r = os.apply(this, arguments); try { all(); } catch(e){} return r; };
 all();
+})();
+</script>
+<script>
+(function(){
+"use strict";
+const K = "haccp-lista-v1";
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, "0");
+const ymd = t => { const d = new Date(t); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
+const addD = (s, n) => { const d = new Date(s + "T12:00:00"); d.setDate(d.getDate() + n); return ymd(d); };
+const DF = ["domenica","lunedì","martedì","mercoledì","giovedì","venerdì","sabato"];
+const lab = s => { const d = new Date(s + "T12:00:00"); return DF[d.getDay()] + " " + pad(d.getDate()) + "/" + pad(d.getMonth() + 1); };
+const rd = () => { try { const v = JSON.parse(localStorage.getItem(K) || "[]"); return Array.isArray(v) ? v : []; } catch(e){ return []; } };
+const wr = a => { try { localStorage.setItem(K, JSON.stringify(a)); } catch(e){} };
+let sq = 0; const uid = () => Date.now().toString(36) + (++sq % 1296).toString(36).padStart(2, "0") + Math.random().toString(36).slice(2, 5);
+const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+const ricette = () => { try { return (JSON.parse(localStorage.getItem("haccp-ric-v1")) || []).filter(r => r && r.nome); } catch(e){ return []; } };
+function match(n){
+  const q = norm(n); if (q.length < 3) return null; let best = null;
+  ricette().forEach(r => { const rn = norm(r.nome); if (!rn) return; if (rn === q) best = r; else if (!best || norm(best.nome) !== q){ if (rn.includes(q) || (q.includes(rn) && rn.length >= 5)) { if (!best || rn.length < norm(best.nome).length) best = r; } } });
+  return best;
+}
+function split(txt){
+  return String(txt || "").split(/\n|,|;|\.\s|\s+e\s+|\s+poi\s+|\s+più\s+/i).map(s => s.replace(/^[\s\-–•*\d.)]+/, "").trim()).filter(s => s.length > 1);
+}
+let day = ymd(Date.now()), manage = false, openRic = "";
+const h = (tag, p, ...k) => { const e = document.createElement(tag); if (p) for (const a in p){ if (a === "text") e.textContent = p[a]; else if (a === "cls") e.className = p[a]; else if (a === "style") e.style.cssText = p[a]; else if (a.startsWith("on")) e[a] = p[a]; else e.setAttribute(a, p[a]); } k.flat().forEach(x => { if (x != null) e.append(x.nodeType ? x : document.createTextNode(x)); }); return e; };
+function items(){ return rd().filter(x => x && !x.x); }
+function put(o){ const a = rd(); const i = a.findIndex(x => x.id === o.id); o.u = Date.now(); if (i >= 0) a[i] = o; else a.push(o); wr(a); }
+function del(o){ put({id: o.id, x: 1}); }
+function addMany(names, d){
+  const have = new Set(items().filter(x => !x.rt && x.day === d).map(x => norm(x.n)));
+  let n = 0;
+  names.forEach(s => { const t = cap(s.trim()); if (!t || have.has(norm(t))) return; have.add(norm(t)); const r = match(t); const o = {id: uid(), day: d, n: t, ok: 0}; if (r) o.rid = r.id || r.nome; put(o); n++; });
+  return n;
+}
+function ingrBox(r){
+  const rows = (r.ingr || []).map(g => h("li", {text: [g.prodotto, g.q != null && g.q !== "" ? g.q + (g.um ? " " + g.um : "") : "", g.nota].filter(Boolean).join(" · ")}));
+  return h("div", {style: "margin:6px 0 4px;padding:8px;border:1px dashed var(--line);border-radius:10px;font-size:14px"},
+    h("b", {text: r.nome + (r.porz ? " · base " + r.porz + " porzioni" : "")}), h("ul", {style: "margin:6px 0 0 18px;padding:0"}, rows),
+    r.proc ? h("p", {style: "white-space:pre-wrap;margin:8px 0 0", text: r.proc}) : null);
+}
+function render(){
+  const box = $("pr_l"); if (!box) return; const keep = $("ls_txt") ? $("ls_txt").value : ""; box.textContent = "";
+  const today = ymd(Date.now());
+  const seg = h("div", {cls: "seg", style: "margin-bottom:10px"},
+    ...[["Oggi", today], ["Domani", addD(today, 1)]].map(([t, d]) => h("button", {type: "button", text: t, "aria-pressed": String(day === d), onclick: () => { day = d; render(); }})));
+  const dt = h("input", {type: "date", value: day, style: "margin-bottom:6px", onchange: ev => { if (ev.target.value){ day = ev.target.value; render(); } }});
+  box.append(seg, h("label", {cls: "f", text: "Altro giorno"}, dt), h("h2", {text: lab(day).replace(/^./, c => c.toUpperCase()), style: "font-size:1.15rem;margin:10px 0 6px"}));
+  const ta = h("textarea", {id: "ls_txt", rows: "3", placeholder: "Tocca qui e detta col microfono della tastiera: «fonduta, salsa di pomodoro, affettare il prosciutto, tagliare i formaggi»", style: "width:100%;box-sizing:border-box;font:inherit;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink)"});
+  ta.value = keep;
+  const msg = h("small", {style: "display:block;min-height:1.2em;color:var(--mute)"});
+  const add = h("button", {type: "button", cls: "p", text: "Aggiungi alla lista", style: "width:100%;margin:6px 0", onclick: () => { const ns = split(ta.value); if (!ns.length){ msg.textContent = "Scrivi o detta almeno una cosa."; return; } const n = addMany(ns, day); ta.value = ""; render(); const m = $("ls_msg"); if (m) m.textContent = n + (n === 1 ? " voce aggiunta" : " voci aggiunte") + (n < ns.length ? " (le altre c'erano già)" : ""); }});
+  msg.id = "ls_msg";
+  box.append(ta, add, msg);
+  // routine
+  const rts = items().filter(x => x.rt).sort((a, b) => a.n.localeCompare(b.n, "it"));
+  const rbox = h("div", {style: "margin:10px 0"}, h("div", {style: "display:flex;justify-content:space-between;align-items:center"}, h("b", {text: "Routine di ogni giorno"}), h("button", {type: "button", text: manage ? "Fatto" : "Gestisci", style: "min-height:36px;padding:0 12px", onclick: () => { manage = !manage; render(); }})));
+  const chips = h("div", {style: "display:flex;flex-wrap:wrap;gap:8px;margin:8px 0"});
+  rts.forEach(r => chips.append(h("button", {type: "button", text: manage ? "✕ " + r.n : "+ " + r.n, style: "min-height:40px;padding:0 12px;border-radius:20px", onclick: () => { if (manage){ del(r); } else { addMany([r.n], day); } render(); }})));
+  if (!rts.length) chips.append(h("small", {text: "Nessuna ancora. Aggiungine una qui sotto: poi con un tocco la metti nella lista del giorno.", style: "color:var(--mute)"}));
+  rbox.append(chips);
+  if (manage){
+    const ni = h("input", {type: "text", placeholder: "Nuova routine, es. Affettare gli affettati", autocomplete: "off", style: "width:100%;box-sizing:border-box"});
+    rbox.append(ni, h("button", {type: "button", text: "Salva routine", style: "width:100%;margin-top:6px", onclick: () => { const t = cap(ni.value.trim()); if (t && !rts.some(r => norm(r.n) === norm(t))) put({id: uid(), rt: 1, n: t}); render(); }}));
+  } else if (rts.length){ rbox.append(h("button", {type: "button", text: "Aggiungi tutte le routine", style: "width:100%", onclick: () => { addMany(rts.map(r => r.n), day); render(); }})); }
+  box.append(rbox);
+  // lista del giorno
+  const all = items().filter(x => !x.rt);
+  const mine = all.filter(x => x.day === day).sort((a, b) => (a.ok - b.ok) || String(a.id).localeCompare(String(b.id)));
+  const fatte = mine.filter(x => x.ok).length;
+  box.append(h("h3", {text: "Da preparare" + (mine.length ? " · " + fatte + " su " + mine.length + " fatte" : ""), style: "margin:14px 0 6px"}));
+  if (!mine.length) box.append(h("p", {cls: "empty", text: "Niente in lista per questo giorno."}));
+  const ul = h("ul", {cls: "list", style: "list-style:none;padding:0;margin:0"});
+  mine.forEach(o => {
+    const r = o.rid ? ricette().find(x => (x.id || x.nome) === o.rid) : null;
+    const li = h("li", {style: "display:flex;flex-direction:column;gap:4px"});
+    const row = h("div", {style: "display:flex;align-items:center;gap:10px"},
+      h("button", {type: "button", text: o.ok ? "✓" : "", "aria-label": o.ok ? "Segna da fare" : "Segna fatta", "aria-pressed": String(!!o.ok), style: "min-width:44px;min-height:44px;font-size:22px", onclick: () => { o.ok = o.ok ? 0 : 1; put(o); render(); }}),
+      h("span", {text: o.n, style: "flex:1;font-size:18px;" + (o.ok ? "text-decoration:line-through;color:var(--mute)" : "")}),
+      r ? h("button", {type: "button", text: "Ricetta", style: "min-height:40px;padding:0 10px", onclick: () => { openRic = openRic === o.id ? "" : o.id; render(); }}) : null,
+      h("button", {type: "button", text: "✕", "aria-label": "Elimina", style: "min-width:44px;min-height:44px", onclick: () => { del(o); render(); }}));
+    li.append(row); if (r && openRic === o.id) li.append(ingrBox(r)); ul.append(li);
+  });
+  box.append(ul);
+  if (mine.length){
+    box.append(h("div", {cls: "row", style: "display:flex;gap:8px;margin-top:10px"},
+      h("button", {type: "button", text: "Copia la lista", style: "flex:1", onclick: async ev => { const t = lab(day) + "\n" + mine.filter(x => !x.ok).map(x => "• " + x.n).join("\n"); try { await navigator.clipboard.writeText(t); ev.target.textContent = "Copiata ✓"; } catch(e){ ev.target.textContent = "Copia non riuscita"; } }}),
+      fatte ? h("button", {type: "button", text: "Togli le fatte", style: "flex:1", onclick: () => { mine.filter(x => x.ok).forEach(del); render(); }}) : null));
+  }
+  // rimaste dai giorni scorsi
+  if (day === today){
+    const old = all.filter(x => !x.ok && x.day < today && x.day >= addD(today, -7)).sort((a, b) => a.day.localeCompare(b.day));
+    if (old.length){
+      box.append(h("h3", {text: "Rimaste dai giorni scorsi", style: "margin:16px 0 6px"}));
+      const u2 = h("ul", {cls: "list", style: "list-style:none;padding:0;margin:0"});
+      old.forEach(o => u2.append(h("li", {style: "display:flex;align-items:center;gap:10px"}, h("span", {style: "flex:1", text: o.n + " (" + lab(o.day) + ")"}), h("button", {type: "button", text: "Porta a oggi", style: "min-height:40px;padding:0 10px", onclick: () => { o.day = today; put(o); render(); }}), h("button", {type: "button", text: "✕", "aria-label": "Elimina", style: "min-width:44px;min-height:44px", onclick: () => { del(o); render(); }}))));
+      box.append(u2);
+    }
+  }
+  const bp = $("prB_l"); if (bp && !manage){} 
+}
+window.listaRender = render;
+addEventListener("prensync", () => { const v = $("vPrep"); if (v && !v.hidden && $("pr_l") && !$("pr_l").hidden && document.activeElement !== $("ls_txt")) render(); });
+render();
+// contatore foto AI
+function cnt(){ try { const c = JSON.parse(localStorage.getItem("haccp-aicnt") || "{}"); return c.d === ymd(Date.now()) ? c.n : 0; } catch(e){ return 0; } }
+function foot(){ const p = $("appVer"); if (!p) return; const n = cnt(); p.textContent = "Vittoria 1926 · " + APPV + " · foto lette con l'AI oggi su questo telefono: " + n; }
+window.aiCount = function(){ try { const d = ymd(Date.now()); const c = JSON.parse(localStorage.getItem("haccp-aicnt") || "{}"); localStorage.setItem("haccp-aicnt", JSON.stringify({d, n: (c.d === d ? c.n : 0) + 1})); } catch(e){} foot(); };
+foot();
 })();
 </script>
 </body>
