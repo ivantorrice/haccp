@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script>
 const FB_CFG = {apiKey:"AIzaSyDgR7_yy8vwORgM1aJcDNU9tkyGfvSDsEk",authDomain:"vittoria-haccp.firebaseapp.com",projectId:"vittoria-haccp",storageBucket:"vittoria-haccp.firebasestorage.app",messagingSenderId:"122368607372",appId:"1:122368607372:web:3b4b70f515ee5eae9367a9"};
-const APPV = "versione 19/11 ore 11:30";
+const APPV = "versione 19/11 ore 14:00";
 const AI_FAST = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.1-flash-lite"}];
 const AI_SMART = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.6-flash"}];
 async function shrinkImg(blob, max){
@@ -975,7 +975,8 @@ function build(){
       if (out) msg.textContent = "Fuori limite: " + limTxt(d) + ". Scrivi l’azione correttiva.";
     };
     const step = k => { const v = parseFloat(inp.value); inp.value = Math.round(((isNaN(v) ? d.start : v) + k) * 10) / 10; check(); };
-    minus.onclick = () => step(-1); plus.onclick = () => step(1);
+    const fz = d.max != null && d.max < 0; /* freezer: + = più freddo (−20 → −21), − = meno freddo (−20 → −19) */
+    minus.onclick = () => step(fz ? 1 : -1); plus.onclick = () => step(fz ? -1 : 1);
     inp.addEventListener("input", check);
     btn.onclick = () => {
       const v = parseFloat(inp.value), op = $("t_op").value.trim();
@@ -2826,6 +2827,8 @@ const live = () => rd(K, []).filter(b => !b.x);
 const KE = "haccp-ev-v1", isPrev = b => !!(b.ev && b.es === "prev");
 const menusEv = () => rd(KE, []).filter(m => !m.x).sort((a, b) => (a.n || "").localeCompare(b.n || "", "it"));
 const eur = v => (Number(v) || 0).toLocaleString("it-IT", {minimumFractionDigits: 0, maximumFractionDigits: 2}) + " €";
+const ppOf = (m, pe) => Number(m && m.pr) > 0 ? Number(m.pr) : (Number(m && m.f) > 0 && Number(pe) > 0 ? Math.round(Number(m.f) / Number(pe) * 100) / 100 : 0);
+const prTxt = (m, pe) => { const q = ppOf(m, pe); if (!(q > 0)) return ""; return eur(q) + " a persona" + (Number(pe) > 0 ? " · totale " + eur(Math.round(q * Number(pe) * 100) / 100) : ""); };
 const active = d => live().filter(b => b.d === d && b.st !== "ann" && !isPrev(b));
 const total = (d, skip) => active(d).filter(b => b.id !== skip).reduce((a, b) => a + (Number(b.p) || 0), 0);
 const slots = d => { const sun = parse(d).getDay() === 0, a = sun ? [12, 0, 15, 0] : [19, 0, 23, 30], out = []; for (let m = a[0] * 60 + a[1]; m <= a[2] * 60 + a[3]; m += 15) out.push(pad(Math.floor(m / 60)) + ":" + pad(m % 60)); return out; };
@@ -2863,7 +2866,7 @@ function list(){
     c.append(E("b", {style: ann ? "text-decoration:line-through" : "", text: b.t + " · " + b.n + " · " + b.p + (Number(b.p) === 1 ? " persona" : " persone")}));
     if (b.tel){ const a = E("a", {href: "tel:" + b.tel.replace(/[^\d+]/g, ""), text: b.tel}); c.append(E("small", {}, a)); }
     if (b.note) c.append(E("small", {text: b.note}));
-    if (b.ev){ const m = menusEv().find(x => x.id === b.mn); c.append(E("small", {style: "font-weight:700;color:var(--acc)", text: "EVENTO · " + (b.es === "conf" ? "confermato" : "preventivo inviato, non conta nei coperti") + (m ? " · menu: " + m.n + (Number(m.f) > 0 ? " · " + eur(m.f) + " a forfait" : "") : " · nessun menu collegato")})); if (isPrev(b)) c.style.borderStyle = "dashed"; }
+    if (b.ev){ const m = menusEv().find(x => x.id === b.mn); c.append(E("small", {style: "font-weight:700;color:var(--acc)", text: "EVENTO · " + (b.es === "conf" ? "confermato" : "preventivo inviato, non conta nei coperti") + (m ? " · menu: " + m.n + (prTxt(m, b.p) ? " · " + prTxt(m, b.p) : "") : " · nessun menu collegato")})); if (isPrev(b)) c.style.borderStyle = "dashed"; }
     c.append(E("small", {text: (b.by ? "Presa da " + b.by : "") + (b.st === "arr" ? " · arrivata" : ann ? " · annullata" : "")}));
     const row = E("div", {cls: "row", style: "flex-wrap:wrap;margin-top:6px"});
     const tg = (txt, st) => { const x = E("button", {type: "button", text: txt, style: "min-height:44px"}); x.setAttribute("aria-pressed", b.st === st); x.onclick = () => { b.st = b.st === st ? "" : st; upsert(K, b); render(); }; return x; };
@@ -2882,7 +2885,7 @@ function list(){
 function form(pre){
   const box = $("pn_form"); box.textContent = "";
   const b = editId ? live().find(x => x.id === editId) : null;
-  const v = b || pre || {};
+  const v = Object.assign({}, b || {}, pre || {});
   const f = E("div", {cls: "tk", style: "margin-top:14px"});
   f.append(E("b", {text: b ? "Modifica prenotazione" : "Nuova prenotazione"}));
   const n = E("input", {type: "text", id: "pn_n", autocomplete: "off", list: "pn_rub", value: v.n || ""}); n.value = v.n || "";
@@ -2899,8 +2902,15 @@ function form(pre){
   const lab = (a, x) => E("label", {cls: "f"}, document.createTextNode(a), x);
   const evC = E("input", {type: "checkbox", id: "pn_ev"}); evC.checked = !!v.ev;
   const evS = E("select", {id: "pn_es"}); [["prev", "Preventivo inviato (non conta nei coperti)"], ["conf", "Confermato (conta nei coperti)"]].forEach(([a, l]) => evS.append(E("option", {value: a, text: l}))); evS.value = v.es === "conf" ? "conf" : "prev";
-  const evM = E("select", {id: "pn_em"}); evM.append(E("option", {value: "", text: "— nessun menu —"})); menusEv().forEach(m => evM.append(E("option", {value: m.id, text: m.n + (Number(m.f) > 0 ? " · " + eur(m.f) : "")}))); evM.value = v.mn || "";
-  const evBox = E("div", {style: "padding:10px;border:1px solid var(--line);border-radius:12px;margin:4px 0 8px"}, lab("Stato dell'evento", evS), lab("Menu dalla libreria Eventi", evM)); evBox.hidden = !evC.checked;
+  const evM = E("select", {id: "pn_em"}); evM.append(E("option", {value: "", text: "— nessun menu —"})); menusEv().forEach(m => evM.append(E("option", {value: m.id, text: m.n + (ppOf(m, 0) > 0 ? " · " + eur(ppOf(m, 0)) + " a persona" : "")}))); evM.value = v.mn || "";
+  const evNew = E("button", {type: "button", text: "Crea menu per questo evento", style: "width:100%;min-height:48px;margin-top:6px"});
+  evNew.onclick = () => {
+    const nm = n.value.trim(), pax = parseInt(p.value, 10) || "";
+    retDraft = {n: nm, tel: t.value.trim(), p: pax, t: s.value, note: nt.value.trim(), ev: 1, es: evS.value, mn: evM.value};
+    edM = {n: nm ? "Evento " + nm : "", f: "", pr: "", note: "", c: nm, d: day, p: pax, portate: [{t: "Antipasto", r: ""}, {t: "Primo", r: ""}, {t: "Secondo", r: ""}, {t: "Dolce", r: ""}]};
+    sub = "e"; render(); window.scrollTo(0, 0);
+  };
+  const evBox = E("div", {style: "padding:10px;border:1px solid var(--line);border-radius:12px;margin:4px 0 8px"}, lab("Stato dell'evento", evS), lab("Menu dalla libreria Eventi", evM), evNew); evBox.hidden = !evC.checked;
   evC.addEventListener("change", () => { evBox.hidden = !evC.checked; reset(); }); [evS, evM].forEach(x => x.addEventListener("change", reset));
   const evL = E("label", {style: "display:flex;gap:10px;align-items:center;min-height:48px;margin-top:6px"}, evC, document.createTextNode("Evento con menu e preventivo"));
   f.append(lab("Nome", n), lab("Telefono", t), E("div", {cls: "row"}, E("label", {cls: "f", style: "flex:1"}, document.createTextNode("Persone"), p), E("label", {cls: "f", style: "flex:1"}, document.createTextNode("Orario"), s)), lab("Note", nt), evL, evBox, warn, go);
@@ -3009,7 +3019,8 @@ function sumView(){
 }
 
 // ---- Eventi: libreria menu + PDF preventivo ----
-let edM = null, delM = "";
+let edM = null, delM = "", retDraft = null;
+const backToBk = id => { const dr = retDraft; retDraft = null; edM = null; if (!dr) return false; if (id) dr.mn = id; sub = "g"; render(); $("pn_form").textContent = ""; form(dr); window.scrollTo(0, 0); return true; };
 const labE = (a, x) => E("label", {cls: "f"}, document.createTextNode(a), x);
 const rids = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 function evView(){
@@ -3022,7 +3033,7 @@ function evView(){
   if (!ms.length) box.append(E("p", {cls: "empty", text: "Nessun menu evento salvato."}));
   ms.forEach(m => {
     const used = live().filter(b => b.mn === m.id).length, nd = (m.portate || []).reduce((a, x) => a + String(x.r || "").split("\n").filter(z => z.trim()).length, 0);
-    const c = E("div", {cls: "tk"}, E("b", {text: m.n}), E("small", {text: (m.portate || []).length + " portate · " + nd + " piatti" + (Number(m.f) > 0 ? " · " + eur(m.f) + " a forfait" : " · forfait non indicato") + (used ? " · collegato a " + used + (used === 1 ? " prenotazione" : " prenotazioni") : "")}));
+    const c = E("div", {cls: "tk"}, E("b", {text: m.n}), E("small", {text: (m.portate || []).length + " portate · " + nd + " piatti" + (ppOf(m, m.p) > 0 ? " · " + eur(ppOf(m, m.p)) + " a persona" : " · prezzo non indicato") + (used ? " · collegato a " + used + (used === 1 ? " prenotazione" : " prenotazioni") : "")}));
     const row = E("div", {cls: "row", style: "flex-wrap:wrap;margin-top:6px"});
     const mk = (t, fn, cl) => { const x = E("button", {type: "button", text: t, cls: cl || "", style: "min-height:44px"}); x.onclick = fn; return x; };
     row.append(mk("PDF", () => pdfEv(m, {}), "p"), mk("Modifica", () => { edM = JSON.parse(JSON.stringify(m)); evView(); window.scrollTo(0, 0); }),
@@ -3035,9 +3046,12 @@ function evEditor(box){
   const d = edM, f = E("div", {cls: "tk"});
   f.append(E("b", {text: d.id ? "Modifica menu evento" : "Nuovo menu evento"}));
   const inp = (label, key, type, ph) => { const i = E("input", {type: type || "text", placeholder: ph || "", autocomplete: "off"}); if (type === "number"){ i.setAttribute("inputmode", "decimal"); i.setAttribute("step", "any"); } i.value = d[key] == null ? "" : d[key]; i.addEventListener("input", () => { d[key] = i.value; }); return labE(label, i); };
-  f.append(inp("Nome del menu (es. Compleanno Mario)", "n"), inp("Prezzo a forfait per tutto l'evento (€)", "f", "number", "es. 2700"));
-  const pp = E("input", {type: "checkbox"}); pp.checked = !!d.pp; pp.addEventListener("change", () => { d.pp = pp.checked; });
-  f.append(E("label", {style: "display:flex;gap:10px;align-items:center;min-height:48px"}, pp, document.createTextNode("Nel PDF mostra anche il prezzo a persona")));
+  if (retDraft) f.append(E("p", {cls: "meta", text: "Stai creando il menu per la prenotazione di " + (retDraft.n || "questo cliente") + ". Quando salvi torni alla prenotazione, con il menu già collegato."}));
+  if (!(Number(d.pr) > 0) && Number(d.f) > 0 && Number(d.p) > 0) d.pr = Math.round(Number(d.f) / Number(d.p) * 100) / 100;
+  f.append(inp("Nome del menu (es. Compleanno Mario)", "n"), inp("Prezzo a persona (€)", "pr", "number", "es. 55"));
+  const tot = E("small", {style: "display:block;margin:-4px 0 8px;color:var(--mute)"});
+  const updTot = () => { const q = Number(String(d.pr).replace(",", ".")), pe = Number(d.p); tot.textContent = q > 0 ? (pe > 0 ? "Totale per " + pe + " persone: " + eur(Math.round(q * pe * 100) / 100) : "Scrivi le persone per vedere il totale.") : ""; };
+  f.append(tot); setTimeout(() => { f.querySelectorAll("input").forEach(i => i.addEventListener("input", updTot)); updTot(); }, 0);
   f.append(inp("Per chi (facoltativo, compare nel PDF)", "c"), E("div", {cls: "row"}, E("div", {style: "flex:1"}, inp("Data (facoltativa)", "d", "date")), E("div", {style: "flex:1"}, inp("Persone", "p", "number"))));
   const ric = (() => { try { return (JSON.parse(localStorage.getItem("haccp-ric-v1")) || []).map(r => r.nome).filter(Boolean).sort((a, b) => a.localeCompare(b, "it")); } catch(e){ return []; } })();
   d.portate.forEach((po, i) => {
@@ -3055,12 +3069,12 @@ function evEditor(box){
   const err = E("p", {cls: "s bad", style: "min-height:1.3em;margin:6px 0"});
   const save = () => {
     if (!String(d.n || "").trim()){ err.textContent = "Scrivi il nome del menu."; return null; }
-    const it = JSON.parse(JSON.stringify(d)); it.n = it.n.trim(); it.f = Number(String(it.f).replace(",", ".")) || 0; it.p = it.p === "" ? "" : Number(it.p) || ""; it.portate = it.portate.filter(x => (x.t || "").trim() || (x.r || "").trim()); if (!it.id) it.id = rids();
+    const it = JSON.parse(JSON.stringify(d)); it.n = it.n.trim(); it.pr = Number(String(it.pr).replace(",", ".")) || 0; it.f = it.pr > 0 ? 0 : (Number(String(it.f).replace(",", ".")) || 0); it.p = it.p === "" ? "" : Number(it.p) || ""; it.portate = it.portate.filter(x => (x.r || "").trim()); if (!it.id) it.id = rids();
     upsert(KE, it); return it;
   };
-  const sv = E("button", {type: "button", cls: "p", text: "Salva menu", style: "width:100%;min-height:52px"}); sv.onclick = () => { if (save()){ edM = null; evView(); } };
-  const pd = E("button", {type: "button", text: "Salva e crea PDF", style: "width:100%;margin-top:8px;min-height:48px"}); pd.onclick = () => { const it = save(); if (it){ edM = null; evView(); pdfEv(it, {}); } };
-  const cx = E("button", {type: "button", text: "Annulla", style: "width:100%;margin-top:8px;min-height:48px"}); cx.onclick = () => { edM = null; evView(); };
+  const sv = E("button", {type: "button", cls: "p", text: "Salva menu", style: "width:100%;min-height:52px"}); sv.onclick = () => { const it = save(); if (it){ if (!backToBk(it.id)){ edM = null; evView(); } } };
+  const pd = E("button", {type: "button", text: "Salva e crea PDF", style: "width:100%;margin-top:8px;min-height:48px"}); pd.onclick = () => { const it = save(); if (it){ const pe = retDraft && retDraft.p; if (!backToBk(it.id)){ edM = null; evView(); } pdfEv(it, pe ? {p: pe} : {}); } };
+  const cx = E("button", {type: "button", text: "Annulla", style: "width:100%;margin-top:8px;min-height:48px"}); cx.onclick = () => { if (!backToBk(null)){ edM = null; evView(); } };
   f.append(err, sv, pd, cx); box.append(f);
 }
 async function pdfEv(m, o){
@@ -3084,12 +3098,13 @@ async function pdfEv(m, o){
     y += 6;
   });
   if (m.note && m.note.trim()){ y += 2; ctr(m.note.trim(), 10, "italic", MUTE, 5); y += 4; }
-  if (Number(m.f) > 0){
+  const qpp = ppOf(m, pe);
+  if (qpp > 0){
     if (y > 250){ doc.addPage(); y = 20; }
     doc.setDrawColor(ACC[0], ACC[1], ACC[2]); doc.line(M + 30, y, W - M - 30, y); y += 9;
-    ctr("Prezzo a forfait per l'evento", 10, "normal", MUTE, 7);
-    ctr(eur(m.f), 22, "bold", INK, 9);
-    if (m.pp && Number(pe) > 0) ctr("pari a circa " + eur(Math.round(Number(m.f) / Number(pe) * 100) / 100) + " a persona (" + pe + " persone)", 11, "normal", MUTE, 6);
+    ctr("Prezzo a persona", 10, "normal", MUTE, 7);
+    ctr(eur(qpp), 22, "bold", INK, 9);
+    if (Number(pe) > 0) ctr("Totale per " + pe + (Number(pe) === 1 ? " persona: " : " persone: ") + eur(Math.round(qpp * Number(pe) * 100) / 100), 12, "normal", MUTE, 7);
   }
   let dl = null; try { dl = await claude.use("downloads"); } catch(e){ dl = null; }
   const fn = "Preventivo-" + String((o && o.n) || m.n).replace(/[^A-Za-z0-9À-ÿ]+/g, "-").replace(/^-|-$/g, "") + ".pdf";
