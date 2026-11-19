@@ -54,9 +54,17 @@ body{background:#EDE2D0;color:#3b3225}
 .dt{display:inline-block;width:22px;height:22px;margin-left:8px;vertical-align:-4px;color:#827560}.dt svg{width:100%;height:100%;display:block}.leg{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;margin:22px 0 4px;font:600 14px Montserrat,Arial,sans-serif;color:#3b3225}.leg span{display:flex;align-items:center;gap:10px}.leg .dt{margin:0}
 .mh .an{display:block;margin-top:8px;font:600 13px Montserrat,Arial,sans-serif;color:#827560}
 .mf{text-align:center;font:600 12px Montserrat,Arial,sans-serif;color:#827560;margin:40px 0 0}
+#lng{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;background:#D9CDB8;padding:10px 12px 4px}
+#lng span{font:600 13px Montserrat,Arial,sans-serif;color:#5b4f3e;margin-right:2px}
+#lng button{font:700 14px Montserrat,Arial,sans-serif;min-height:40px;min-width:48px;padding:0 12px;border:2px solid #827560;border-radius:999px;background:transparent;color:#827560}
+#lng button[aria-pressed="true"]{background:#827560;color:#fff}
+body{top:0!important}.skiptranslate iframe,.goog-te-banner-frame{display:none!important}#goog-gt-tt,.goog-te-balloon-frame{display:none!important}.goog-text-highlight{background:none!important;box-shadow:none!important}
+@media print{#lng{display:none!important}}
 </style>
 </head>
 <body>
+<div id="lng" class="notranslate" translate="no"><span>Language</span><button type="button" data-l="it">IT</button><button type="button" data-l="en">English</button><button type="button" data-l="fr">Français</button><button type="button" data-l="de">Deutsch</button><button type="button" data-l="es">Español</button></div>
+<div id="gt" hidden></div>
 <div id="msg">Sto caricando il menù…</div>
 <div id="pages"></div>
 <script>
@@ -169,6 +177,20 @@ try { const c = JSON.parse(localStorage.getItem(CACHE) || "null"); if (Array.isA
     try { localStorage.setItem(CACHE, JSON.stringify(carta)); } catch(e){}
     show(carta);
   } catch(e){ if (!document.getElementById("pages").childNodes.length){ document.getElementById("msg").textContent = "Non riesco a caricare il menù. Controlla la connessione e riprova."; } }
+})();
+</script>
+<script>
+(function(){
+  var cur = "it";
+  try { var m = document.cookie.match(/(?:^|;\s*)googtrans=\/it\/([a-z]{2})/); if (m) cur = m[1]; } catch(e){}
+  var bs = document.querySelectorAll("#lng button");
+  function mark(){ bs.forEach(function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-l") === cur)); }); }
+  function setCookie(v){ var d = location.hostname, past = "Thu, 01 Jan 1970 00:00:00 GMT"; if (v){ document.cookie = "googtrans=" + v + "; path=/"; document.cookie = "googtrans=" + v + "; path=/; domain=" + d; } else { document.cookie = "googtrans=; path=/; expires=" + past; document.cookie = "googtrans=; path=/; domain=" + d + "; expires=" + past; } }
+  window.googleTranslateElementInit = function(){ try { new google.translate.TranslateElement({pageLanguage: "it", autoDisplay: false, layout: google.translate.TranslateElement.InlineLayout.SIMPLE}, "gt"); } catch(e){} };
+  function loadWidget(){ var s = document.createElement("script"); s.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"; s.async = true; document.head.append(s); }
+  bs.forEach(function(b){ b.onclick = function(){ var l = b.getAttribute("data-l"); if (l === cur) return; setCookie(l === "it" ? "" : "/it/" + l); location.reload(); }; });
+  mark();
+  if (cur !== "it") loadWidget();
 })();
 </script>
 </body>
