@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script>
 const FB_CFG = {apiKey:"AIzaSyDgR7_yy8vwORgM1aJcDNU9tkyGfvSDsEk",authDomain:"vittoria-haccp.firebaseapp.com",projectId:"vittoria-haccp",storageBucket:"vittoria-haccp.firebasestorage.app",messagingSenderId:"122368607372",appId:"1:122368607372:web:3b4b70f515ee5eae9367a9"};
-const APPV = "versione 19/11 ore 14:00";
+const APPV = "versione 20/11 ore 12:00";
 const AI_FAST = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.1-flash-lite"}];
 const AI_SMART = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.6-flash"}];
 async function shrinkImg(blob, max){
@@ -337,7 +337,8 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <div class="brand"><img id="brandLogo" alt="Vittoria 1926 Osteria Contemporanea" width="90" height="58"></div>
 <div id="oggi" role="region" aria-label="Da fare oggi"></div>
 <div class="seg" id="areaSeg" role="group" aria-label="Area"><button type="button" id="aHaccp" aria-pressed="true" style="min-height:58px;font-size:22px">HACCP</button><button type="button" id="aMag" aria-pressed="false" style="min-height:58px;font-size:22px">Magazzino</button><button type="button" id="aCarta" aria-pressed="false" style="min-height:58px;font-size:22px">Sala</button></div>
-<nav class="tabs"><button type="button" id="tTemp" aria-pressed="false">Temperature</button><button type="button" id="tMerce" aria-pressed="false">Merce in arrivo</button><button type="button" id="tAbb" aria-pressed="false">Abbattimento</button><button type="button" id="tPul" aria-pressed="false">Pulizia</button><button type="button" id="tNc" aria-pressed="false">Non conformità</button><button type="button" id="tMis" aria-pressed="false">Mancanti</button><button type="button" id="tMag" aria-pressed="false">Magazzino</button><button type="button" id="tPrep" aria-pressed="false">Preparazioni</button><button type="button" id="tRic" aria-pressed="false">Menu cucina</button><button type="button" id="tCarta" aria-pressed="false">Cibo</button><button type="button" id="tVini" aria-pressed="false">Bevande</button><button type="button" id="tPren" aria-pressed="false">Prenotazioni</button><button type="button" id="tExp" aria-pressed="false">PDF</button><button type="button" id="tPiano" aria-pressed="false">Piano HACCP</button></nav>
+<nav class="tabs"><button type="button" id="tTemp" aria-pressed="false">Temperature</button><button type="button" id="tMerce" aria-pressed="false">Merce in arrivo</button><button type="button" id="tAbb" aria-pressed="false">Abbattimento</button><button type="button" id="tPul" aria-pressed="false">Pulizia</button><button type="button" id="tNc" aria-pressed="false">Non conformità</button><button type="button" id="tMis" aria-pressed="false">Mancanti</button><button type="button" id="tMag" aria-pressed="false">Magazzino</button><button type="button" id="tPrep" aria-pressed="false">Preparazioni</button><button type="button" id="tRic" aria-pressed="false">Menu cucina</button><button type="button" id="tCartaG" aria-pressed="false">Carta</button><button type="button" id="tPren" aria-pressed="false">Prenotazioni</button><button type="button" id="tExp" aria-pressed="false">PDF</button><button type="button" id="tPiano" aria-pressed="false">Piano HACCP</button></nav>
+<nav class="tabs" id="ctSub" hidden><button type="button" id="tCarta" aria-pressed="false">Cibo</button><button type="button" id="tVini" aria-pressed="false">Bevande</button></nav>
 <div id="vox">
 <button type="button" class="p" id="voxBtn" style="width:100%;margin-bottom:10px" hidden>Comando vocale: tocca e parla</button>
 <label class="f" style="margin-bottom:8px">Scrivi o detta il comando (microfono della tastiera)<input id="voxIn" type="text" autocomplete="off" placeholder="es. freezer uno meno ventuno"></label>
@@ -787,12 +788,13 @@ function scadList(){
   const today = ymd(Date.now()), done = load(SCK, {});
   return load("haccp-trac-v1", []).filter(e => (e.scadenza || "").trim() && !done[e.t]).map(e => { const d = parseScad(e.scadenza); return {e, d, left: d ? Math.round((new Date(d + "T12:00:00") - new Date(today + "T12:00:00")) / 864e5) : null}; }).sort((a, b) => (a.d || "9999") < (b.d || "9999") ? -1 : 1);
 }
-let lastH = "t", lastC = "w", lastM = "g";
-const HID = ["tTemp", "tMerce", "tAbb", "tPul", "tNc", "tMis", "tExp", "tPiano"], MID = ["tMag", "tPrep", "tRic"], CID = ["tCarta", "tVini", "tPren"];
+let lastH = "t", lastC = "w", lastM = "g", lastK = "k";
+const HID = ["tTemp", "tMerce", "tAbb", "tPul", "tNc", "tMis", "tExp", "tPiano"], MID = ["tMag", "tPrep", "tRic"], CID = ["tCartaG", "tPren"];
 const VIEWS = {t:["vTemp","tTemp"], m:["vMerce","tMerce"], a:["vAbb","tAbb"], p:["vPul","tPul"], n:["vNc","tNc"], x:["vMis","tMis"], g:["vMag","tMag"], q:["vPrep","tPrep"], r:["vRic","tRic"], k:["vCarta","tCarta"], j:["vCarta","tVini"], w:["vPren","tPren"], e:["vExp","tExp"], z:["vPiano","tPiano"]};
 function show(w){
-  const inM = "gurq".includes(w), inC = "kjw".includes(w), inH = !inM && !inC; if (inM) lastM = w; else if (inC) lastC = w; else lastH = w;
+  const inM = "gurq".includes(w), inC = "kjw".includes(w), inH = !inM && !inC; if (w === "k" || w === "j") lastK = w; if (inM) lastM = w; else if (inC) lastC = w; else lastH = w;
   HID.forEach(i => { $(i).hidden = !inH; }); MID.forEach(i => { $(i).hidden = !inM; }); CID.forEach(i => { $(i).hidden = !inC; });
+  { const cs = w === "k" || w === "j"; $("ctSub").hidden = !cs; $("tCartaG").setAttribute("aria-pressed", cs); $("tCartaG").onclick = () => show(lastK); }
   $("vox").hidden = !inH; $("aHaccp").setAttribute("aria-pressed", inH); $("aMag").setAttribute("aria-pressed", inM); $("aCarta").setAttribute("aria-pressed", inC);
   for (const k in VIEWS){ $(VIEWS[k][0]).hidden = VIEWS[k][0] !== VIEWS[w][0]; $(VIEWS[k][1]).setAttribute("aria-pressed", k === w); $(VIEWS[k][1]).onclick = () => show(k); }
   if (w === "a") prepAbb();
@@ -1396,6 +1398,7 @@ renderCal();
     tFc: '<circle cx="12" cy="12" r="9"/><path d="M15.500 8.500a4 4 0 1 0 0 7M7 11h6M7 13.500h6"/>',
     tPren: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15h3"/>',
     tVini: '<path d="M7 3h10v6a5 5 0 0 1-10 0z"/><path d="M12 14v7M8 21h8"/>',
+    tCartaG: '<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h8"/>',
     tCarta: '<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h8"/>',
     tExp: '<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>',
     tPiano: '<path d="M12 2l8 3v6c0 5-3.500 9-8 11-4.500-2-8-6-8-11V5z"/><path d="M8.500 12l2.500 2.500 4.500-5"/>'
@@ -2167,7 +2170,7 @@ function renderStock(){
   all.filter(k => !q || k.includes(q)).sort((a, b) => prods[a].nome.localeCompare(prods[b].nome, "it")).forEach(k => {
     const p = prods[k], s = stock(k), lp = lastP(k), low = p.min > 0 && s < p.min;
     const card = h("div", {class: "tk"}, h("b", {text: p.nome}),
-      h("p", {class: "s " + (s < 0 || low ? "bad" : "ok"), text: "Giacenza: " + qf(s) + " " + p.um + (p.min > 0 ? " · minima " + qf(p.min) + " " + p.um : "") + (s < 0 ? " (controlla: scarichi superiori ai carichi)" : low ? " · sotto scorta" : "")}),
+      h("p", {class: "s " + (s < 0 || low ? "bad" : "ok"), text: "Giacenza: " + qf(s) + " " + p.um + (() => { const cz = p.um !== "pz" && s > 0 ? carichi(k).find(m => m.pz > 0) : null; return cz ? " · circa " + qf(Math.round(s / (cz.q / cz.pz) * 10) / 10) + " pezzi" : ""; })() + (p.min > 0 ? " · minima " + qf(p.min) + " " + p.um : "") + (s < 0 ? " (controlla: scarichi superiori ai carichi)" : low ? " · sotto scorta" : "")}),
       h("small", {text: lp ? "Ultimo prezzo: " + eur(lp.p) + " / " + p.um + " = " + ppu(lp.p, p.um) + (lp.forn ? " · " + lp.forn : "") + " · " + dmy(lp.data) : "Prezzo non registrato"}));
     if (p.ord) card.append(lab("Quanto ordinare (es. 2 kg, 3 cartoni)", h("input", {type: "text", value: p.oq || "", placeholder: "facoltativo", oninput: ev => { p.oq = ev.target.value.trim(); saveAll(); }})));
     const tg = m => () => { open = open && open.k === k && open.mode === m ? null : {k, mode: m}; renderStock(); };
@@ -2200,7 +2203,7 @@ async function shrinkDoc(file){
   return new Promise(r => c.toBlob(r, "image/jpeg", 0.88));
 }
 const newRev = () => ({forn: "", data: today(), doc: "", righe: [], ok: false, anag: {}});
-const newRiga = () => ({nome: "", q: null, um: "kg", p: null, tot: null, warn: ""});
+const newRiga = () => ({nome: "", q: null, um: "kg", p: null, tot: null, pz: null, warn: ""});
 $("mg_man").onclick = () => { if (!rev) rev = newRev(); rev.righe.push(newRiga()); setMsg(""); renderRev(); };
 async function readDoc(f){
   if (!f) return;
@@ -2209,7 +2212,7 @@ async function readDoc(f){
   try {
     if (!sample) throw new Error("nosample");
     const lim = await sample.limits(); if (!lim.images) throw new Error("noimg");
-    const prompt = "Sei un assistente per un ristorante italiano. L’immagine è una bolla di consegna (DDT) o una fattura di un fornitore alimentare. Rispondi SOLO con un oggetto JSON con le chiavi: fornitore (nome dell’azienda che vende), partita_iva, indirizzo, telefono, email, iban (tutti e solo del FORNITORE, cioè di chi vende, mai del cliente o del destinatario; null se non stampati), numero (numero del documento), data (GG/MM/AAAA), righe. “righe” è un array con un oggetto per ogni prodotto, con le chiavi: descrizione, quantita (numero stampato nella colonna quantità), um (solo una tra kg, g, l, ml, cl, pz; usa pz per pezzi, confezioni, cartoni, colli), formato_quantita (solo se la descrizione dice quanto contiene ogni confezione o pezzo, per esempio “500 g”, “1 litro”, “100 pezzi”: scrivi solo il numero; altrimenti null), formato_um (l’unità di quel contenuto, una tra kg, g, l, ml, cl, pz; altrimenti null), prezzo_unitario (numero, prezzo SENZA IVA per quella unità di misura), totale (numero, importo della riga senza IVA). Se un dato non è leggibile o non c’è (per esempio una bolla senza prezzi) usa null. Non inventare nessun numero e non calcolare nulla: copia quello che è stampato.";
+    const prompt = "Sei un assistente per un ristorante italiano. L’immagine è una bolla di consegna (DDT) o una fattura di un fornitore alimentare. Rispondi SOLO con un oggetto JSON con le chiavi: fornitore (nome dell’azienda che vende), partita_iva, indirizzo, telefono, email, iban (tutti e solo del FORNITORE, cioè di chi vende, mai del cliente o del destinatario; null se non stampati), numero (numero del documento), data (GG/MM/AAAA), righe. “righe” è un array con un oggetto per ogni prodotto, con le chiavi: descrizione, quantita (numero stampato nella colonna quantità), um (solo una tra kg, g, l, ml, cl, pz; usa pz per pezzi, confezioni, cartoni, colli), formato_quantita (solo se la descrizione dice quanto contiene ogni confezione o pezzo, per esempio “500 g”, “1 litro”, “100 pezzi”: scrivi solo il numero; altrimenti null), formato_um (l’unità di quel contenuto, una tra kg, g, l, ml, cl, pz; altrimenti null), pezzi (quanti pezzi, capi o tranci sono in questa riga, se la bolla lo dice: per esempio “3 fiorentine da 1 kg, peso totale 3 kg” ha pezzi = 3; altrimenti null), prezzo_unitario (numero, prezzo SENZA IVA per quella unità di misura), totale (numero, importo della riga senza IVA). REGOLA PEZZI E PESO: se una riga di carne, pesce o altro prodotto venduto a peso riporta sia il numero di pezzi sia un peso totale, quantita = il PESO TOTALE stampato (per esempio 3), um = kg (o g), pezzi = il numero di pezzi (per esempio 3), e prezzo_unitario è il prezzo per kg. Se è stampato solo il peso di un pezzo (“1 kg l’una”) e i pezzi, NON moltiplicare tu: usa il peso totale solo se è stampato. Se non è stampato nessun peso totale, quantita = numero stampato nella colonna quantità, e pezzi = null. Se un dato non è leggibile o non c’è (per esempio una bolla senza prezzi) usa null. Non inventare nessun numero e non calcolare nulla: copia quello che è stampato.";
     const d = await sample.json(prompt, {images: [blob], modelTier: "default"}) || {};
     if (!rev) rev = newRev(); rev.ok = false;
     if (d.fornitore && !rev.forn) rev.forn = String(d.fornitore).trim();
@@ -2219,10 +2222,11 @@ async function readDoc(f){
     const dd = pDate(d.data); if (dd && dd <= today()) rev.data = dd;
     (Array.isArray(d.righe) ? d.righe : []).forEach(x => {
       const r = newRiga(); r.nome = String(x.descrizione || "").trim(); r.q = toNum(x.quantita); r.um = normUm(x.um); r.p = toNum(x.prezzo_unitario); r.tot = toNum(x.totale);
+      { const pzz = toNum(x.pezzi); if (pzz > 0 && r.um !== "pz") r.pz = Math.round(pzz * 100) / 100; }
       const fq = toNum(x.formato_quantita), fu = x.formato_um ? normUm(x.formato_um) : null;
       if (fq > 0 && fu && r.um === "pz" && r.q > 0){
         const f = UF[fu], packs = r.q, qb = packs * fq * f.f;
-        r.fmt = qf(packs) + " × " + qf(fq) + " " + fu + " = " + qf(qb) + " " + f.b;
+        r.fmt = qf(packs) + " × " + qf(fq) + " " + fu + " = " + qf(qb) + " " + f.b; if (fu !== "pz" && !(r.pz > 0)) r.pz = packs;
         r.q = qb; r.um = f.b; if (r.p != null) r.p = r.p / (fq * f.f);
       }
       if (r.p == null && r.tot != null && r.q > 0) r.p = r.tot / r.q;
@@ -2247,7 +2251,7 @@ function renderRev(){
   box.append(top);
   rev.righe.forEach((r, i) => {
     const tot = h("small"), hint = h("p", {class: "s bad"}), upd = () => {
-      tot.textContent = (r.fmt ? "Letto: " + r.fmt + " · " : "") + (r.q != null && r.p != null ? "Totale riga: " + eur(r.q * r.p) : "") + (r.p != null && r.p >= 0 ? (r.q != null ? " · " : "") + "Prezzo: " + ppu(r.p / UF[r.um].f, UF[r.um].b) : "");
+      tot.textContent = (r.fmt ? "Letto: " + r.fmt + " · " : "") + (r.q != null && r.p != null ? "Totale riga: " + eur(r.q * r.p) : "") + (r.p != null && r.p >= 0 ? (r.q != null ? " · " : "") + "Prezzo: " + ppu(r.p / UF[r.um].f, UF[r.um].b) : "") + (r.pz > 0 && r.q > 0 && r.um !== "pz" ? " · " + qf(r.pz) + " pezzi, peso medio " + qf(Math.round(r.q / r.pz * 1000) / 1000) + " " + r.um + " l’uno" : "");
       const sm = r.nome && !prods[key(r.nome)] ? similar(r.nome) : null;
       hint.textContent = ""; hint.append(r.warn || "");
       if (sm){ hint.append((r.warn ? " " : "") + "Forse è «" + sm.nome + "», già in magazzino. "); hint.append(h("button", {type: "button", class: "mgx", text: "Usa «" + sm.nome + "»", onclick: () => { r.nome = sm.nome; renderRev(); }})); }
@@ -2255,6 +2259,7 @@ function renderRev(){
     const card = h("div", {class: "tk"},
       lab("Prodotto", h("input", {type: "text", list: "mgProdList", autocomplete: "off", value: r.nome, oninput: ev => { r.nome = ev.target.value; r.warn = ""; rev.ok = false; upd(); }})),
       h("div", {class: "mg3"}, lab("Quantità", numIn(r.q, v => { r.q = v; r.warn = ""; rev.ok = false; upd(); })), lab("Unità", umSel(UM, r.um, v => { r.um = v; rev.ok = false; })), lab("€ per unità", numIn(r.p, v => { r.p = v; r.warn = ""; rev.ok = false; upd(); }, "senza IVA"))),
+      lab("Pezzi (facoltativo, per contare i capi)", numIn(r.pz, v => { r.pz = v; upd(); }, "es. 3")),
       tot, hint, h("button", {type: "button", class: "mgx", text: "Togli riga", onclick: () => { rev.righe.splice(i, 1); renderRev(); }}));
     box.append(card); upd();
   });
@@ -2281,7 +2286,7 @@ function renderRev(){
     rows.forEach((r, i) => {
       const k = key(r.nome), b = UF[r.um].b;
       if (!prods[k]) prods[k] = {nome: r.nome.trim(), um: b, min: 0};
-      mov.push({id: t + "c" + i, t, data: rev.data, tipo: "carico", k, nome: prods[k].nome, q: r.q * UF[r.um].f, p: r.p != null ? r.p / UF[r.um].f : null, forn: rev.forn.trim(), doc: rev.doc.trim()});
+      mov.push({id: t + "c" + i, t, data: rev.data, tipo: "carico", k, nome: prods[k].nome, q: r.q * UF[r.um].f, p: r.p != null ? r.p / UF[r.um].f : null, forn: rev.forn.trim(), doc: rev.doc.trim(), pz: r.pz > 0 && UF[r.um].b !== "pz" ? r.pz : undefined});
     });
     saveAll(); const n = rows.length, up = upsertSup(rev.forn.trim(), rev.anag || {});
     rev = null; setMsg("Caricate " + n + (n === 1 ? " riga" : " righe") + " in magazzino. " + (up.nuovo ? "Creata la scheda del fornitore." : up.agg.length ? "Aggiornata la scheda del fornitore (" + up.agg.join(", ") + ")." : "") + (up.diffs.length ? " Attenzione: " + up.diffs.join(", ") + " diverso da quello salvato: controlla nella scheda Fornitori." : "")); renderRev();
