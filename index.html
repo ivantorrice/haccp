@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script>
 const FB_CFG = {apiKey:"AIzaSyDgR7_yy8vwORgM1aJcDNU9tkyGfvSDsEk",authDomain:"vittoria-haccp.firebaseapp.com",projectId:"vittoria-haccp",storageBucket:"vittoria-haccp.firebasestorage.app",messagingSenderId:"122368607372",appId:"1:122368607372:web:3b4b70f515ee5eae9367a9"};
-const APPV = "versione 20/11 ore 12:00";
+const APPV = "versione 22/11 ore 12:00";
 const AI_FAST = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.1-flash-lite"}];
 const AI_SMART = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.6-flash"}];
 async function shrinkImg(blob, max){
@@ -337,8 +337,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <div class="brand"><img id="brandLogo" alt="Vittoria 1926 Osteria Contemporanea" width="90" height="58"></div>
 <div id="oggi" role="region" aria-label="Da fare oggi"></div>
 <div class="seg" id="areaSeg" role="group" aria-label="Area"><button type="button" id="aHaccp" aria-pressed="true" style="min-height:58px;font-size:22px">HACCP</button><button type="button" id="aMag" aria-pressed="false" style="min-height:58px;font-size:22px">Magazzino</button><button type="button" id="aCarta" aria-pressed="false" style="min-height:58px;font-size:22px">Sala</button></div>
-<nav class="tabs"><button type="button" id="tTemp" aria-pressed="false">Temperature</button><button type="button" id="tMerce" aria-pressed="false">Merce in arrivo</button><button type="button" id="tAbb" aria-pressed="false">Abbattimento</button><button type="button" id="tPul" aria-pressed="false">Pulizia</button><button type="button" id="tNc" aria-pressed="false">Non conformità</button><button type="button" id="tMis" aria-pressed="false">Mancanti</button><button type="button" id="tMag" aria-pressed="false">Magazzino</button><button type="button" id="tPrep" aria-pressed="false">Preparazioni</button><button type="button" id="tRic" aria-pressed="false">Menu cucina</button><button type="button" id="tCartaG" aria-pressed="false">Carta</button><button type="button" id="tPren" aria-pressed="false">Prenotazioni</button><button type="button" id="tExp" aria-pressed="false">PDF</button><button type="button" id="tPiano" aria-pressed="false">Piano HACCP</button></nav>
-<nav class="tabs" id="ctSub" hidden><button type="button" id="tCarta" aria-pressed="false">Cibo</button><button type="button" id="tVini" aria-pressed="false">Bevande</button></nav>
+<nav class="tabs"><button type="button" id="tTemp" aria-pressed="false">Temperature</button><button type="button" id="tMerce" aria-pressed="false">Merce in arrivo</button><button type="button" id="tAbb" aria-pressed="false">Abbattimento</button><button type="button" id="tPul" aria-pressed="false">Pulizia</button><button type="button" id="tNc" aria-pressed="false">Non conformità</button><button type="button" id="tMis" aria-pressed="false">Mancanti</button><button type="button" id="tMag" aria-pressed="false">Magazzino</button><button type="button" id="tPrep" aria-pressed="false">Preparazioni</button><button type="button" id="tRic" aria-pressed="false">Menu cucina</button><button type="button" id="tCarta" aria-pressed="false">Cibo</button><button type="button" id="tVini" aria-pressed="false">Bevande</button><button type="button" id="tPren" aria-pressed="false">Prenotazioni</button><button type="button" id="tExp" aria-pressed="false">PDF</button><button type="button" id="tPiano" aria-pressed="false">Piano HACCP</button></nav>
 <div id="vox">
 <button type="button" class="p" id="voxBtn" style="width:100%;margin-bottom:10px" hidden>Comando vocale: tocca e parla</button>
 <label class="f" style="margin-bottom:8px">Scrivi o detta il comando (microfono della tastiera)<input id="voxIn" type="text" autocomplete="off" placeholder="es. freezer uno meno ventuno"></label>
@@ -789,12 +788,11 @@ function scadList(){
   return load("haccp-trac-v1", []).filter(e => (e.scadenza || "").trim() && !done[e.t]).map(e => { const d = parseScad(e.scadenza); return {e, d, left: d ? Math.round((new Date(d + "T12:00:00") - new Date(today + "T12:00:00")) / 864e5) : null}; }).sort((a, b) => (a.d || "9999") < (b.d || "9999") ? -1 : 1);
 }
 let lastH = "t", lastC = "w", lastM = "g", lastK = "k";
-const HID = ["tTemp", "tMerce", "tAbb", "tPul", "tNc", "tMis", "tExp", "tPiano"], MID = ["tMag", "tPrep", "tRic"], CID = ["tCartaG", "tPren"];
+const HID = ["tTemp", "tMerce", "tAbb", "tPul", "tNc", "tMis", "tExp", "tPiano"], MID = ["tMag", "tPrep", "tRic"], CID = ["tCarta", "tVini", "tPren"];
 const VIEWS = {t:["vTemp","tTemp"], m:["vMerce","tMerce"], a:["vAbb","tAbb"], p:["vPul","tPul"], n:["vNc","tNc"], x:["vMis","tMis"], g:["vMag","tMag"], q:["vPrep","tPrep"], r:["vRic","tRic"], k:["vCarta","tCarta"], j:["vCarta","tVini"], w:["vPren","tPren"], e:["vExp","tExp"], z:["vPiano","tPiano"]};
 function show(w){
   const inM = "gurq".includes(w), inC = "kjw".includes(w), inH = !inM && !inC; if (w === "k" || w === "j") lastK = w; if (inM) lastM = w; else if (inC) lastC = w; else lastH = w;
   HID.forEach(i => { $(i).hidden = !inH; }); MID.forEach(i => { $(i).hidden = !inM; }); CID.forEach(i => { $(i).hidden = !inC; });
-  { const cs = w === "k" || w === "j"; $("ctSub").hidden = !cs; $("tCartaG").setAttribute("aria-pressed", cs); $("tCartaG").onclick = () => show(lastK); }
   $("vox").hidden = !inH; $("aHaccp").setAttribute("aria-pressed", inH); $("aMag").setAttribute("aria-pressed", inM); $("aCarta").setAttribute("aria-pressed", inC);
   for (const k in VIEWS){ $(VIEWS[k][0]).hidden = VIEWS[k][0] !== VIEWS[w][0]; $(VIEWS[k][1]).setAttribute("aria-pressed", k === w); $(VIEWS[k][1]).onclick = () => show(k); }
   if (w === "a") prepAbb();
@@ -1398,7 +1396,6 @@ renderCal();
     tFc: '<circle cx="12" cy="12" r="9"/><path d="M15.500 8.500a4 4 0 1 0 0 7M7 11h6M7 13.500h6"/>',
     tPren: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15h3"/>',
     tVini: '<path d="M7 3h10v6a5 5 0 0 1-10 0z"/><path d="M12 14v7M8 21h8"/>',
-    tCartaG: '<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h8"/>',
     tCarta: '<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h8"/>',
     tExp: '<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>',
     tPiano: '<path d="M12 2l8 3v6c0 5-3.500 9-8 11-4.500-2-8-6-8-11V5z"/><path d="M8.500 12l2.500 2.500 4.500-5"/>'
@@ -1526,7 +1523,7 @@ renderCal();
     }
     (p.sezioni || []).forEach(s => {
       if (s.nome) inn.append(E("div", {cls: "cs", text: s.nome}));
-      (s.voci || []).forEach(v => {
+      (s.voci || []).filter(v => !v.h).forEach(v => {
         const n = E("div", {cls: "n"}, document.createTextNode(v.n || ""));
         if (v.a) n.append(E("sup", {cls: "a", text: v.a}));
         dtShow(v).forEach(x => n.append(dtEl(x[0])));
@@ -1534,7 +1531,7 @@ renderCal();
         inn.append(E("div", {cls: "ci"}, l, E("div", {cls: "p", text: v.p || ""})));
       });
     });
-    if ((p.sezioni || []).some(s => (s.voci || []).some(v => dtShow(v).length))) { const lg = E("div", {cls: "dl"}); DT.forEach(x => lg.append(E("span", {}, dtEl(x[0]), document.createTextNode(x[2])))); inn.append(lg); }
+    if ((p.sezioni || []).some(s => (s.voci || []).some(v => !v.h && dtShow(v).length))) { const lg = E("div", {cls: "dl"}); DT.forEach(x => lg.append(E("span", {}, dtEl(x[0]), document.createTextNode(x[2])))); inn.append(lg); }
     d.append(inn); return d;
   }
   function tooFull(p){
@@ -1556,7 +1553,7 @@ renderCal();
   function voceEd(s, vi, p, si, pfx){
     const v = s.voci[vi], key = (pfx || "") + si + "." + vi, wrap = E("div", {style: "border:1px solid var(--line,#ccc);border-radius:10px;padding:8px;margin:6px 0"});
     const head = E("div", {cls: "row", style: "align-items:center"});
-    const t = E("button", {type: "button", style: "flex:1;text-align:left;min-height:44px", text: (v.n || "(senza nome)") + "  ·  " + (v.p || "")});
+    const t = E("button", {type: "button", text: (v.h ? "🚫 " : "") + (v.n || "(senza nome)") + "  ·  " + (v.p || "") + (v.h ? "  ·  nascosta nel PDF" : ""), style: "flex:1;text-align:left;min-height:44px" + (v.h ? ";opacity:.55" : "")});
     t.onclick = () => { openV = openV === key ? "" : key; renderList(); };
     const up = E("button", {type: "button", text: "▲", "aria-label": "Su", style: "min-height:44px;min-width:44px"}), dn = E("button", {type: "button", text: "▼", "aria-label": "Giù", style: "min-height:44px;min-width:44px"});
     up.onclick = () => { if (mv(s.voci, vi, -1)){ sv(); openV = ""; renderList(); } };
@@ -1615,6 +1612,9 @@ renderCal();
       kb.onclick = () => { pick = pick === pk ? "" : pk; renderList(); };
       const rc = E("button", {type: "button", text: "Ricalcola tutto dagli ingredienti", style: "width:100%;min-height:44px;margin:6px 0"});
       rc.onclick = () => { v.aMan = false; v.dtMan = false; refresh(); sv(); };
+      const hcb = E("input", {type: "checkbox"}); hcb.checked = !!v.h;
+      hcb.onchange = () => { if (hcb.checked) v.h = 1; else delete v.h; sv(); renderList(); };
+      wrap.append(E("label", {cls: "chk", style: "display:flex;gap:10px;align-items:center;min-height:48px;margin:4px 0;font-weight:600"}, hcb, document.createTextNode("Nascondi nel PDF e nel menu dei clienti (la voce resta qui, non viene eliminata)")));
       wrap.append(field("Nome del piatto o del vino", v.n, x => { v.n = x; }),
         field("Descrizione (a capo = nuova riga)", v.d, x => { v.d = x; }, true),
         kb);
@@ -1879,7 +1879,7 @@ function qrSvg(text){
     pbSt("Pubblico…");
     try {
       const P = await pubInit(); if (!P.auth.currentUser){ pbSt("Accedi prima.", true); return; }
-      await P.fs.setDoc(P.fs.doc(P.db, "public", "carta"), {v: JSON.stringify(carta, (k, val) => (k === "i" || k === "aMan" || k === "dtMan" || k === "aPrev") ? undefined : val), ts: Date.now(), by: P.auth.currentUser.email});
+      await P.fs.setDoc(P.fs.doc(P.db, "public", "carta"), {v: JSON.stringify(carta, (k, val) => (k === "i" || k === "aMan" || k === "dtMan" || k === "aPrev") ? undefined : (k === "voci" && Array.isArray(val) ? val.filter(x => !(x && x.h)) : val)), ts: Date.now(), by: P.auth.currentUser.email});
       const t = new Date().toLocaleString("it-IT", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"});
       try { localStorage.setItem("haccp-pub-last", t); } catch(e){}
       pbSt("Pubblicato il " + t + ". Il menù online è aggiornato.");
