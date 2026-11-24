@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script>
 const FB_CFG = {apiKey:"AIzaSyDgR7_yy8vwORgM1aJcDNU9tkyGfvSDsEk",authDomain:"vittoria-haccp.firebaseapp.com",projectId:"vittoria-haccp",storageBucket:"vittoria-haccp.firebasestorage.app",messagingSenderId:"122368607372",appId:"1:122368607372:web:3b4b70f515ee5eae9367a9"};
-const APPV = "versione 23/11 ore 18:45";
+const APPV = "versione 24/11 ore 18:20";
 const AI_FAST = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.1-flash-lite"}];
 const AI_SMART = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.6-flash"}];
 async function shrinkImg(blob, max){
@@ -331,6 +331,26 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+#pn_cal{margin-bottom:12px}
+#pn_cal .cn{display:flex;align-items:center;gap:8px;margin:0 0 6px}#pn_cal .cn b{flex:1;text-align:center;font-size:19px}
+#pn_cal .cn button{min-width:48px;min-height:44px;padding:0}
+#pn_cal .cg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+#pn_cal .cw{font-size:12px;color:var(--mute);text-align:center}
+#pn_cal .cd{position:relative;min-height:50px;padding:2px 0;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:700 16px "Barlow Semi Condensed",system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
+#pn_cal .cd small{font-size:12px;font-weight:700;opacity:.85}
+#pn_cal .cd.cx{background:transparent;border-color:transparent;pointer-events:none}
+#pn_cal .cd.cc{border-style:dashed;color:var(--mute)}
+#pn_cal .cd.ct{outline:2px solid var(--acc);outline-offset:1px}
+#pn_cal .cd.cs{background:var(--acc)!important;color:var(--accink)!important;border-color:var(--acc)}
+#pn_cal .cd.cf{background:var(--warn);color:#fff;border-color:var(--warn)}
+#pn_cal .cd .st{position:absolute;top:0;right:3px;font-size:12px;color:var(--warn)}
+#pn_cal .cd.cf .st,#pn_cal .cd.cs .st,#pn_cal .cd.dk .st{color:#FFE2CF}
+#pn_cal .cd.dk{color:var(--accink)}
+#pn_cal .tg{width:100%;margin-top:8px;min-height:44px;font-size:16px}
+#pn_cal .lg{font-size:12.5px;color:var(--mute);margin:8px 0 0}
+#pn_cal .wd{min-height:60px}
+</style>
 </head>
 <body>
 <main>
@@ -548,6 +568,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <p class="meta" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 10px"><span id="pnSync"></span><button type="button" id="pnRef" style="min-height:44px">Aggiorna ora</button></p>
 <div class="seg" role="group" aria-label="Sezioni prenotazioni" style="margin-bottom:12px;flex-wrap:wrap"><button type="button" id="pnB_g" aria-pressed="true">Giornata</button><button type="button" id="pnB_r" aria-pressed="false">Rubrica clienti</button><button type="button" id="pnB_s" aria-pressed="false">Riepilogo</button><button type="button" id="pnB_e" aria-pressed="false">Eventi</button></div>
 <div id="pn_g">
+<div id="pn_cal"></div>
 <div class="row" style="align-items:end;margin-bottom:10px"><button type="button" id="pn_prev" aria-label="Giorno prima" style="min-width:52px">◀</button><label class="f" style="flex:1;margin:0"><input type="date" id="pn_day"></label><button type="button" id="pn_next" aria-label="Giorno dopo" style="min-width:52px">▶</button></div>
 <button type="button" id="pn_today" style="width:100%;margin-bottom:12px">Oggi</button>
 <div id="pn_head"></div><div id="pn_list"></div><div id="pn_form"></div>
@@ -3150,11 +3171,74 @@ async function pdfEv(m, o){
   if (!dl){ toast("Il salvataggio dei file non è disponibile qui. Apri la pagina dal browser."); return; }
   try { await dl.save({filename: fn, data: doc.output("blob")}); toast("PDF pronto: " + fn); } catch(e){ toast(e && e.code === "declined" ? "Salvataggio annullato." : "Non sono riuscito a salvare il PDF. Riprova."); }
 }
+// ---- calendario prenotazioni: striscia settimana + mese colorato ----
+let calOpen = true;
+(function(){ try { calOpen = localStorage.getItem("haccp-cal-open") !== "0"; } catch(e){} })();
+const MON1 = d => { const x = parse(d), w = (x.getDay() + 6) % 7; x.setDate(x.getDate() - w); return x; };
+function calInfo(){
+  const m = {};
+  live().forEach(b => { if (b.st === "ann" || !b.d) return; const o = m[b.d] || (m[b.d] = {c: 0, n: 0, ev: 0, pv: 0});
+    if (isPrev(b)){ o.pv++; return; } o.n++; o.c += Number(b.p) || 0; if (b.ev) o.ev++; });
+  return m;
+}
+function calCell(d, inf, lim, cur){
+  const o = inf[d] || {c: 0, n: 0, ev: 0, pv: 0}, dt = parse(d), cl = ["cd"];
+  if (turno(d) === "Chiuso") cl.push("cc");
+  if (d === ymd(new Date())) cl.push("ct");
+  const r = lim > 0 ? o.c / lim : 0;
+  let st = "";
+  if (d === cur) cl.push("cs");
+  else if (o.c > 0){
+    if (r >= 1) cl.push("cf");
+    else { const pc = Math.round(10 + Math.min(1, r) * 80); st = "background:color-mix(in srgb,var(--acc) " + pc + "%,var(--card))"; if (r > .72) cl.push("dk"); }
+  }
+  const b = E("button", {type: "button", cls: cl.join(" "), style: st, "aria-label": DN[dt.getDay()] + " " + dt.getDate() + " " + MN[dt.getMonth()] + ": " + o.c + " coperti" + (o.ev ? ", evento con menu" : o.pv ? ", preventivo evento" : "")});
+  b.append(document.createTextNode(String(dt.getDate())));
+  if (o.c > 0) b.append(E("small", {text: String(o.c)}));
+  if (o.ev) b.append(E("span", {cls: "st", text: "★"})); else if (o.pv) b.append(E("span", {cls: "st", text: "☆"}));
+  b.onclick = () => { calMon = null; setDay(d); };
+  return b;
+}
+let calMon = null;
+function calView(){
+  const box = $("pn_cal"); if (!box) return; box.textContent = "";
+  const inf = calInfo(), lim = limit(), cur = day;
+  const WD = ["L", "M", "M", "G", "V", "S", "D"];
+  // striscia settimana
+  const mo = MON1(cur), nav = E("div", {cls: "cn"});
+  const wp = E("button", {type: "button", text: "◀", "aria-label": "Settimana prima"}), wn = E("button", {type: "button", text: "▶", "aria-label": "Settimana dopo"});
+  const we = new Date(mo); we.setDate(we.getDate() + 6);
+  const lab = mo.getDate() + (mo.getMonth() !== we.getMonth() ? " " + MN[mo.getMonth()].slice(0, 3) : "") + " – " + we.getDate() + " " + MN[we.getMonth()].slice(0, 3);
+  wp.onclick = () => { const x = new Date(mo); x.setDate(x.getDate() - 7); calMon = null; setDay(ymd(x)); };
+  wn.onclick = () => { const x = new Date(mo); x.setDate(x.getDate() + 7); calMon = null; setDay(ymd(x)); };
+  nav.append(wp, E("b", {text: "Settimana " + lab}), wn); box.append(nav);
+  const wk = E("div", {cls: "cg"});
+  for (let i = 0; i < 7; i++){ const x = new Date(mo); x.setDate(x.getDate() + i); const c = calCell(ymd(x), inf, lim, cur); c.classList.add("wd"); c.insertBefore(E("span", {style: "font-size:11px;font-weight:600;opacity:.75", text: WD[i]}), c.firstChild); wk.append(c); }
+  box.append(wk);
+  const tg = E("button", {type: "button", cls: "tg", text: calOpen ? "▲ Nascondi il mese" : "▼ Mostra tutto il mese"});
+  tg.onclick = () => { calOpen = !calOpen; try { localStorage.setItem("haccp-cal-open", calOpen ? "1" : "0"); } catch(e){} calView(); };
+  box.append(tg);
+  if (calOpen){
+    const ym = calMon || cur.slice(0, 7), y = +ym.slice(0, 4), mth = +ym.slice(5, 7) - 1;
+    const mp = (dlt) => { const x = new Date(y, mth + dlt, 1); calMon = x.getFullYear() + "-" + pad(x.getMonth() + 1); calView(); };
+    const n2 = E("div", {cls: "cn", style: "margin-top:12px"});
+    const pb = E("button", {type: "button", text: "◀", "aria-label": "Mese prima"}), nb = E("button", {type: "button", text: "▶", "aria-label": "Mese dopo"});
+    pb.onclick = () => mp(-1); nb.onclick = () => mp(1);
+    n2.append(pb, E("b", {text: MN[mth].charAt(0).toUpperCase() + MN[mth].slice(1) + " " + y}), nb); box.append(n2);
+    const g = E("div", {cls: "cg"}); WD.forEach(w => g.append(E("div", {cls: "cw", text: w})));
+    const first = new Date(y, mth, 1), lead = (first.getDay() + 6) % 7;
+    for (let i = 0; i < lead; i++) g.append(E("div", {cls: "cd cx"}));
+    const nd = new Date(y, mth + 1, 0).getDate();
+    for (let k = 1; k <= nd; k++) g.append(calCell(y + "-" + pad(mth + 1) + "-" + pad(k), inf, lim, cur));
+    box.append(g);
+    box.append(E("p", {cls: "lg", text: "Numero sotto il giorno = coperti · più scuro = più pieno · rosso = completo (" + lim + ") · ★ evento confermato · ☆ solo preventivo · tratteggiato = chiuso"}));
+  }
+}
 function render(){
   try { barUpd(); } catch(e){}
   ["g", "r", "s", "e"].forEach(k => { $("pn_" + k).hidden = k !== sub; $("pnB_" + k).setAttribute("aria-pressed", k === sub); });
   $("pn_day").value = day; fillDl();
-  if (sub === "g"){ head(); list(); if (!$("pn_form").firstChild) form(); } else if (sub === "r") rubView(); else if (sub === "e") evView(); else sumView();
+  if (sub === "g"){ calView(); head(); list(); if (!$("pn_form").firstChild) form(); } else if (sub === "r") rubView(); else if (sub === "e") evView(); else sumView();
 }
 $("pnB_g").onclick = () => { sub = "g"; render(); };
 $("pnB_r").onclick = () => { sub = "r"; render(); };
@@ -3165,7 +3249,7 @@ $("pn_day").addEventListener("change", () => { if ($("pn_day").value) setDay($("
 $("pn_prev").onclick = () => { const d = parse(day); d.setDate(d.getDate() - 1); setDay(ymd(d)); };
 $("pn_next").onclick = () => { const d = parse(day); d.setDate(d.getDate() + 1); setDay(ymd(d)); };
 $("pn_today").onclick = () => setDay(ymd(new Date()));
-addEventListener("prensync", () => { barUpd(); checkNew(); if ($("vPren").hidden) return; if ($("pn_form").contains(document.activeElement)){ head(); list(); fillDl(); } else render(); });
+addEventListener("prensync", () => { barUpd(); checkNew(); if ($("vPren").hidden) return; if ($("pn_form").contains(document.activeElement)){ calView(); head(); list(); fillDl(); } else render(); });
 const syncTxt = () => { const c = window.cloudState || {}; $("pnSync").textContent = c.text || ""; $("pnSync").style.color = c.ok ? "var(--ok)" : "var(--warn)"; };
 addEventListener("cloudstate", syncTxt); syncTxt();
 $("pnRef").onclick = async () => { const b = $("pnRef"); b.disabled = true; b.textContent = "Aggiorno…"; const ok = window.cloudApi && await cloudApi.sync(); b.disabled = false; b.textContent = "Aggiorna ora"; if (!ok) $("pnSync").textContent = "Non riesco a collegarmi: controlla la rete o il codice cucina."; else render(); };
