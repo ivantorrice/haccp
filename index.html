@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script>
 const FB_CFG = {apiKey:"AIzaSyDgR7_yy8vwORgM1aJcDNU9tkyGfvSDsEk",authDomain:"vittoria-haccp.firebaseapp.com",projectId:"vittoria-haccp",storageBucket:"vittoria-haccp.firebasestorage.app",messagingSenderId:"122368607372",appId:"1:122368607372:web:3b4b70f515ee5eae9367a9"};
-const APPV = "versione 24/11 ore 18:20";
+const APPV = "versione 25/11 ore 09:10";
 const AI_FAST = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.1-flash-lite"}];
 const AI_SMART = [{m:"gemini-3.5-flash-lite"}, {m:"gemini-3.8-flash"}, {m:"gemini-3.6-flash"}];
 async function shrinkImg(blob, max){
@@ -355,6 +355,7 @@ textarea{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-
 <body>
 <main>
 <div class="brand"><img id="brandLogo" alt="Vittoria 1926 Osteria Contemporanea" width="90" height="58"></div>
+<button type="button" id="quickPren" style="width:100%;min-height:54px;margin:0 0 12px;font-size:20px">+ Nuova prenotazione</button>
 <div id="oggi" role="region" aria-label="Da fare oggi"></div>
 <div class="seg" id="areaSeg" role="group" aria-label="Area"><button type="button" id="aHaccp" aria-pressed="true" style="min-height:58px;font-size:22px">HACCP</button><button type="button" id="aMag" aria-pressed="false" style="min-height:58px;font-size:22px">Magazzino</button><button type="button" id="aCarta" aria-pressed="false" style="min-height:58px;font-size:22px">Sala</button></div>
 <nav class="tabs"><button type="button" id="tTemp" aria-pressed="false">Temperature</button><button type="button" id="tMerce" aria-pressed="false">Merce in arrivo</button><button type="button" id="tAbb" aria-pressed="false">Abbattimento</button><button type="button" id="tPul" aria-pressed="false">Pulizia</button><button type="button" id="tNc" aria-pressed="false">Non conformità</button><button type="button" id="tMis" aria-pressed="false">Mancanti</button><button type="button" id="tMag" aria-pressed="false">Magazzino</button><button type="button" id="tPrep" aria-pressed="false">Preparazioni</button><button type="button" id="tRic" aria-pressed="false">Menu cucina</button><button type="button" id="tCarta" aria-pressed="false">Cibo</button><button type="button" id="tVini" aria-pressed="false">Bevande</button><button type="button" id="tPren" aria-pressed="false">Prenotazioni</button><button type="button" id="tExp" aria-pressed="false">PDF</button><button type="button" id="tPiano" aria-pressed="false">Piano HACCP</button></nav>
@@ -3268,6 +3269,7 @@ function barUpd(){
   const l2 = E("div", {style: "font-size:14px;font-weight:400;opacity:.85", text: n + (n === 1 ? " prenotazione" : " prenotazioni") + " · limite " + lim + " · tocca per aprire le prenotazioni"});
   bar.append(l1, l2);
 }
+$("quickPren").onclick = () => { $("aCarta").click(); $("tPren").click(); sub = "g"; setDay(ymd(new Date())); const n = $("pn_n"); if (n){ n.scrollIntoView({block: "center"}); try { n.focus({preventScroll: true}); } catch(e){} } };
 bar.onclick = () => { $("aCarta").click(); $("tPren").click(); setDay(ymd(new Date())); };
 const SEEN = "haccp-pren-seen";
 function seenSet(){ try { const v = JSON.parse(localStorage.getItem(SEEN)); return v ? new Set(v) : null; } catch(e){ return null; } }
